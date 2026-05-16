@@ -1,0 +1,40 @@
+{
+  "name": "vscode-blast-radius",
+  "displayName": "vscode-blast-radius",
+  "description": "VS Code extension for semantic blast radius analysis in Java repositories.",
+  "version": "0.0.1",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:blastRadius.start"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "blastRadius.start",
+        "title": "Blast Radius: Start"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "npm run check-types && npm run compile:extension && npm run compile:webview",
+    "check-types": "tsc --noEmit",
+    "compile:extension": "esbuild ./src/extension.ts --bundle --platform=node --external:vscode --format=cjs --outfile=dist/extension.js",
+    "compile:webview": "npm --prefix webview-ui run build"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.2"
+  }
+}
