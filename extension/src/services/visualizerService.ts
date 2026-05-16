@@ -1,0 +1,189 @@
+import { logger } from "../utils/logger.js";
+
+export interface ContractB {
+  metadata: {
+    timestamp: string;
+    targetFile: string;
+    analysisVersion: string;
+  };
+  nodes: Array<{
+    id: string;
+    label: string;
+    type: string;
+    file: string;
+    line?: number;
+    riskLevel: "critical" | "high" | "medium" | "low";
+    riskScore: number;
+    reasons: string[];
+  }>;
+  edges: Array<{
+    source: string;
+    target: string;
+    type: string;
+    label?: string;
+  }>;
+  summary: {
+    totalNodes: number;
+    totalEdges: number;
+    riskDistribution: {
+      critical: number;
+      high: number;
+      medium: number;
+      low: number;
+    };
+    overallRisk: string;
+    keyFindings: string[];
+  };
+}
+
+/**
+ * Generate markdown report from Contract B
+ */
+export async function generateMarkdown(contractB: ContractB): Promise<string> {
+  try {
+    logger.info("Generating markdown report");
+
+    // Validate input
+    if (!contractB || !contractB.summary || !contractB.nodes) {
+      throw new Error("Invalid Contract B structure");
+    }
+
+    let md = "# 🎯 Blast Radius Analysis Report\n\n";
+
+    // Metadata section
+    md += `## 📋 Metadata\n\n`;
+    md += `- **Target File**: \`${contractB.metadata?.targetFile || 'Unknown'}\`\n`;
+    md += `- **Analysis Time**: ${contractB.metadata?.timestamp || new Date().toISOString()}\n`;
+    md += `- **Version**: ${contractB.metadata?.analysisVersion || '1.0.0'}\n\n`;
+
+    // Summary section with emojis for risk levels
+    md += `## 📊 Summary\n\n`;
+    md += `- **Total Nodes**: ${contractB.summary.totalNodes}\n`;
+    md += `- **Total Edges**: ${contractB.summary.totalEdges}\n`;
+    md += `- **Overall Risk**: ${getRiskEmoji(contractB.summary.overallRisk)} **${contractB.summary.overallRisk.toUpperCase()}**\n\n`;
+
+    // Risk distribution with visual indicators
+    md += `## 🎨 Risk Distribution\n\n`;
+    md += `| Risk Level | Count | Percentage |\n`;
+    md += `|------------|-------|------------|\n`;
+    const total = contractB.summary.totalNodes;
+    md += `| 🔴 Critical | ${contractB.summary.riskDistribution.critical} | ${getPercentage(contractB.summary.riskDistribution.critical, total)}% |\n`;
+    md += `| 🟠 High | ${contractB.summary.riskDistribution.high} | ${getPercentage(contractB.summary.riskDistribution.high, total)}% |\n`;
+    md += `| 🟡 Medium | ${contractB.summary.riskDistribution.medium} | ${getPercentage(contractB.summary.riskDistribution.medium, total)}% |\n`;
+    md += `| 🟢 Low | ${contractB.summary.riskDistribution.low} | ${getPercentage(contractB.summary.riskDistribution.low, total)}% |\n\n`;
+
+    // Key findings
+    if (contractB.summary.keyFindings && contractB.summary.keyFindings.length > 0) {
+      md += `## 🔍 Key Findings\n\n`;
+      contractB.summary.keyFindings.forEach((finding: string, index: number) => {
+        md += `${index + 1}. ${finding}\n`;
+      });
+      md += `\n`;
+    }
+
+    // Nodes section grouped by risk level
+    md += `## 📦 Impacted Components\n\n`;
+    
+    const nodesByRisk = groupNodesByRisk(contractB.nodes);
+    
+    for (const riskLevel of ['critical', 'high', 'medium', 'low']) {
+      const nodes = nodesByRisk[riskLevel];
+      if (nodes && nodes.length > 0) {
+        md += `### ${getRiskEmoji(riskLevel)} ${riskLevel.toUpperCase()} Risk (${nodes.length})\n\n`;
+        
+        nodes.forEach((node: any) => {
+          md += `#### ${node.label}\n\n`;
+          md += `- **Type**: ${node.type}\n`;
+          md += `- **File**: \`${node.file}\`${node.line ? `:${node.line}` : ''}\n`;
+          md += `- **Risk Score**: ${node.riskScore}/100\n`;
+          
+          if (node.reasons && node.reasons.length > 0) {
+            md += `- **Reasons**:\n`;
+            node.reasons.forEach((reason: string) => {
+              md += `  - ${reason}\n`;
+            });
+          }
+          md += `\n`;
+        });
+      }
+    }
+
+    // Dependency graph section
+    if (contractB.edges && contractB.edges.length > 0) {
+      md += `## 🔗 Dependency Graph\n\n`;
+      md += `Total dependencies: ${contractB.edges.length}\n\n`;
+      
+      md += `\`\`\`mermaid\n`;
+      md += `graph TD\n`;
+      
+      contractB.nodes.forEach((node: any) => {
+        const style = getRiskStyle(node.riskLevel);
+        md += `  ${node.id}["${node.label}"]:::${style}\n`;
+      });
+      
+      contractB.edges.forEach((edge: any) => {
+        const label = edge.label ? `|${edge.label}|` : '';
+        md += `  ${edge.source} -->${label} ${edge.target}\n`;
+      });
+      
+      md += `  classDef critical fill:#ff4444,stroke:#cc0000,color:#fff\n`;
+      md += `  classDef high fill:#ff9944,stroke:#cc6600,color:#fff\n`;
+      md += `  classDef medium fill:#ffdd44,stroke:#ccaa00,color:#000\n`;
+      md += `  classDef low fill:#44ff44,stroke:#00cc00,color:#000\n`;
+      md += `\`\`\`\n\n`;
+    }
+
+    // Footer
+    md += `---\n\n`;
+    md += `*Generated by Blast Radius VSCode Extension*\n`;
+
+    logger.info("Markdown report generated successfully");
+    return md;
+
+  } catch (error) {
+    logger.error("Failed to generate markdown", error);
+    throw new Error(`Markdown generation failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+function getRiskEmoji(risk: string): string {
+  const riskLower = risk.toLowerCase();
+  if (riskLower.includes('critical')) return '🔴';
+  if (riskLower.includes('high')) return '🟠';
+  if (riskLower.includes('medium')) return '🟡';
+  if (riskLower.includes('low')) return '🟢';
+  return '⚪';
+}
+
+function getRiskStyle(risk: string): string {
+  const riskLower = risk.toLowerCase();
+  if (riskLower.includes('critical')) return 'critical';
+  if (riskLower.includes('high')) return 'high';
+  if (riskLower.includes('medium')) return 'medium';
+  return 'low';
+}
+
+function getPercentage(count: number, total: number): string {
+  if (total === 0) return '0';
+  return ((count / total) * 100).toFixed(1);
+}
+
+function groupNodesByRisk(nodes: any[]): Record<string, any[]> {
+  const grouped: Record<string, any[]> = {
+    critical: [],
+    high: [],
+    medium: [],
+    low: []
+  };
+
+  nodes.forEach(node => {
+    const risk = node.riskLevel.toLowerCase();
+    if (grouped[risk]) {
+      grouped[risk].push(node);
+    }
+  });
+
+  return grouped;
+}
+
+// Made with Bob

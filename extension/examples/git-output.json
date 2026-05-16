@@ -1,0 +1,5 @@
+{
+  "targetFile": "src/UserService.java",
+  "gitDiff": "public void validateUser() { ... }",
+  "changedMethods": ["validateUser"]
+}
