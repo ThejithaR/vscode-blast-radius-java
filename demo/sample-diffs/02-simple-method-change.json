@@ -1,0 +1,6 @@
+{
+  "targetFile": "components/flow-orchestration-framework/org.wso2.carbon.identity.flow.inflow.extensions/src/main/java/org/wso2/carbon/identity/flow/inflow/extensions/model/AccessConfig.java",
+  "targetPackage": "org.wso2.carbon.identity.flow.inflow.extensions.model",
+  "gitDiff": "@@ -22,6 +22,7 @@ import org.wso2.carbon.identity.flow.inflow.extensions.executor.PathTypeAnnotati\n \n import java.util.Collections;\n import java.util.List;\n+import java.util.stream.Collectors;\n \n /**\n  * Access Configuration for In-Flow Extension actions.\n@@ -84,7 +85,7 @@ public class AccessConfig {\n         if (expose == null) {\n             return Collections.emptyList();\n         }\n-        return expose.stream().map(ContextPath::getPath).toList();\n+        return expose.stream().map(ContextPath::getPath).collect(Collectors.toList());\n     }\n \n     /**\n@@ -108,7 +109,7 @@ public class AccessConfig {\n         if (modify == null) {\n             return Collections.emptyList();\n         }\n-        return modify.stream().map(ContextPath::getPath).toList();\n+        return modify.stream().map(ContextPath::getPath).collect(Collectors.toList());\n     }",
+  "changedMethods": ["getExposedPaths", "getModifiablePaths"]
+}
