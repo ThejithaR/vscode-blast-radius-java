@@ -56,34 +56,34 @@ Keeping contracts explicit ensures each environment can evolve independently whi
 ### 1) Install root extension dependencies
 
 ```bash
-cd /home/runner/work/vscode-blast-radius-java/vscode-blast-radius-java
+cd <project-root>
 npm install
 ```
 
 ### 2) Install webview dependencies
 
 ```bash
-cd /home/runner/work/vscode-blast-radius-java/vscode-blast-radius-java/webview-ui
+cd <project-root>/webview-ui
 npm install
 ```
 
 ### 3) Install AST engine dependencies
 
 ```bash
-cd /home/runner/work/vscode-blast-radius-java/vscode-blast-radius-java/ast-engine
+cd <project-root>/ast-engine
 pip install -r requirements.txt
 ```
 
 ### Build extension + webview
 
 ```bash
-cd /home/runner/work/vscode-blast-radius-java/vscode-blast-radius-java
+cd <project-root>
 npm run compile
 ```
 
 ### Run webview in development mode
 
 ```bash
-cd /home/runner/work/vscode-blast-radius-java/vscode-blast-radius-java/webview-ui
+cd <project-root>/webview-ui
 npm run dev
 ```
