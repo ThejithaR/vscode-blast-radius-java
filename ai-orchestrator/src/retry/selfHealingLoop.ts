@@ -1,0 +1,1 @@
+// TODO(Member 4): wrap BobClient.call() in a retry loop. On ZodError, append the error.message to the next prompt as a correction instruction, retry up to maxRetries (default 3). Throw after exhaustion.

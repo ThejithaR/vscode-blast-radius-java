@@ -1,0 +1,57 @@
+{
+  "targetFile": "src/main/java/com/example/core/security/ValidationUtils.java",
+  "targetPackage": "com.example.core.security",
+  "overallRiskScore": "CRITICAL",
+  "summary": "The addition of a mandatory 'strictMode' boolean parameter to verifyTokenStructure() creates breaking compile-time errors in 2 downstream files. Urgent refactoring required.",
+  "nodes": [
+    {
+      "id": "node_target",
+      "filePath": "src/main/java/com/example/core/security/ValidationUtils.java",
+      "packageName": "com.example.core.security",
+      "label": "ValidationUtils.java (Modified)",
+      "risk": "TARGET",
+      "reason": "Origin of the breaking signature change."
+    },
+    {
+      "id": "node_filter",
+      "filePath": "src/main/java/com/example/api/middleware/JwtAuthFilter.java",
+      "packageName": "com.example.api.middleware",
+      "label": "JwtAuthFilter.java",
+      "risk": "CRITICAL",
+      "reason": "COMPILE BREAK: The method call verifyTokenStructure(rawToken) is missing the new mandatory 'strictMode' parameter. This will completely halt compilation."
+    },
+    {
+      "id": "node_billing",
+      "filePath": "src/main/java/com/example/api/controllers/InternalBillingController.java",
+      "packageName": "com.example.api.controllers",
+      "label": "InternalBillingController.java",
+      "risk": "CRITICAL",
+      "reason": "COMPILE BREAK: Missing the new mandatory 'strictMode' parameter. If this component fails to compile, billing pipeline routes will drop."
+    },
+    {
+      "id": "node_logger",
+      "filePath": "src/main/java/com/example/analytics/logging/AuditLogger.java",
+      "packageName": "com.example.analytics.logging",
+      "label": "AuditLogger.java",
+      "risk": "LOW_RISK",
+      "reason": "LOGICAL RUNTIME WARN: While compile-breaking parameters apply here too, this is an analytics sink. Less runtime business threat than billing or auth failures."
+    }
+  ],
+  "edges": [
+    {
+      "from": "node_target",
+      "to": "node_filter",
+      "type": "breaking-dependency"
+    },
+    {
+      "from": "node_target",
+      "to": "node_billing",
+      "type": "breaking-dependency"
+    },
+    {
+      "from": "node_target",
+      "to": "node_logger",
+      "type": "warning-dependency"
+    }
+  ]
+}

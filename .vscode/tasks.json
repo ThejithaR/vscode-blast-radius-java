@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: build:extension",
+      "type": "shell",
+      "command": "npm run build:extension",
+      "group": "build",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "npm: build:ast",
+      "type": "shell",
+      "command": "npm run build:ast",
+      "group": "build"
+    },
+    {
+      "label": "npm: build:visualizer",
+      "type": "shell",
+      "command": "npm run build:visualizer",
+      "group": "build"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+// TODO(Member 2): given the file's current content and the hunks, find the enclosing Java method name for each changed line range. Lightweight regex/bracket matching is fine — M3 does the deep AST resolution.

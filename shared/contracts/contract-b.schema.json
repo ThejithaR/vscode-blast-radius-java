@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blast-radius/contract-b.schema.json",
+  "title": "ContractB",
+  "description": "Output of IBM Bob, validated by Zod in the AI Orchestrator. Consumed by the visualizer webview. Severity, reasons, and edge classifications are all Bob's responsibility.",
+  "type": "object",
+  "required": ["targetFile", "targetPackage", "overallRiskScore", "summary", "nodes", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "targetFile": { "type": "string" },
+    "targetPackage": { "type": "string" },
+    "overallRiskScore": {
+      "type": "string",
+      "enum": ["TARGET", "CRITICAL", "WARNING", "LOW_RISK", "SAFE"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "2-3 sentence executive summary, top of graph."
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "filePath", "packageName", "label", "risk", "reason"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "filePath": { "type": "string" },
+          "packageName": { "type": "string" },
+          "label": { "type": "string" },
+          "risk": {
+            "type": "string",
+            "enum": ["TARGET", "CRITICAL", "WARNING", "LOW_RISK", "SAFE"]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short justification, prefixed COMPILE BREAK: / LOGICAL RUNTIME WARN: / SAFE PASSIVE:"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["breaking-dependency", "warning-dependency", "safe-dependency"]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "blast-radius-mapper",
+  "version": "0.0.1",
+  "private": true,
+  "description": "VS Code extension that maps the semantic blast radius of Java code changes using JavaParser + IBM Bob.",
+  "workspaces": [
+    "extension",
+    "git-engine",
+    "ai-orchestrator",
+    "visualizer",
+    "shared"
+  ],
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "build:ast": "bash scripts/build-ast-engine.sh",
+    "build:visualizer": "bash scripts/build-visualizer.sh",
+    "build:extension": "bash scripts/build-extension.vsix.sh",
+    "build": "npm run build:ast && npm run build:visualizer && npm run build:extension"
+  },
+  "engines": {
+    "node": ">=20",
+    "npm": ">=10"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blast-radius/contract-a.schema.json",
+  "title": "ContractA",
+  "description": "Merged payload sent to IBM Bob. Produced by extension/src/orchestrator/contractAssembler.ts. NOTE: no severity fields appear in this contract — severity is Bob's exclusive output (see Contract B).",
+  "type": "object",
+  "required": ["targetFile", "targetPackage", "gitDiff", "dependencies"],
+  "additionalProperties": false,
+  "properties": {
+    "targetFile": { "type": "string" },
+    "targetPackage": { "type": "string" },
+    "gitDiff": { "type": "string" },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filePath", "packageName", "importedSymbols", "usageContextLine"],
+        "additionalProperties": false,
+        "properties": {
+          "filePath": { "type": "string" },
+          "packageName": { "type": "string" },
+          "importedSymbols": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "usageContextLine": { "type": "string" }
+        }
+      }
+    }
+  }
+}

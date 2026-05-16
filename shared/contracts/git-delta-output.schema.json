@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://blast-radius/git-delta-output.schema.json",
+  "title": "GitDeltaOutput",
+  "description": "Output of git-engine (Member 2). Forwarded to ast-engine (M3) and to extension orchestrator (M1) for merge into Contract A.",
+  "type": "object",
+  "required": ["targetFile", "targetPackage", "gitDiff", "changedMethods"],
+  "additionalProperties": false,
+  "properties": {
+    "targetFile": {
+      "type": "string",
+      "description": "Workspace-relative path with forward slashes."
+    },
+    "targetPackage": {
+      "type": "string",
+      "description": "Fully-qualified Java package of the modified file."
+    },
+    "gitDiff": {
+      "type": "string",
+      "description": "Unified diff (output of `git diff HEAD -- <file>`)."
+    },
+    "changedMethods": {
+      "type": "array",
+      "description": "Method names whose source lines fall within the diff hunks.",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "dependencies": [
+    {
+      "filePath": "src/main/java/com/example/api/middleware/JwtAuthFilter.java",
+      "packageName": "com.example.api.middleware",
+      "importedSymbols": ["ValidationUtils"],
+      "usageContextLine": "if (!ValidationUtils.verifyTokenStructure(rawToken)) { response.setStatus(401); return; }"
+    },
+    {
+      "filePath": "src/main/java/com/example/api/controllers/InternalBillingController.java",
+      "packageName": "com.example.api.controllers",
+      "importedSymbols": ["ValidationUtils"],
+      "usageContextLine": "boolean isValidPartner = ValidationUtils.verifyTokenStructure(header.getAuthToken());"
+    },
+    {
+      "filePath": "src/main/java/com/example/analytics/logging/AuditLogger.java",
+      "packageName": "com.example.analytics.logging",
+      "importedSymbols": ["ValidationUtils"],
+      "usageContextLine": "logger.info(\"Token analysis structural integrity outcome: \" + ValidationUtils.verifyTokenStructure(t));"
+    }
+  ]
+}
