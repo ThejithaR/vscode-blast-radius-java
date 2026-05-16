@@ -1,0 +1,9 @@
+{
+  "dependencies": [
+    {
+      "filePath": "src/AuthController.java",
+      "packageName": "com.auth",
+      "usageContextLine": "userService.validateUser();"
+    }
+  ]
+}
