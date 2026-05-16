@@ -14,7 +14,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["filePath", "packageName", "importedSymbols", "usageContextLine"],
+        "required": ["filePath", "packageName", "importedSymbols", "callSites"],
         "additionalProperties": false,
         "properties": {
           "filePath": { "type": "string" },
@@ -23,7 +23,20 @@
             "type": "array",
             "items": { "type": "string" }
           },
-          "usageContextLine": { "type": "string" }
+          "callSites": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["callerMethod", "lineNumber", "usageContextLine"],
+              "additionalProperties": false,
+              "properties": {
+                "callerMethod": { "type": "string" },
+                "lineNumber": { "type": "integer", "minimum": 1 },
+                "usageContextLine": { "type": "string" }
+              }
+            }
+          }
         }
       }
     }
