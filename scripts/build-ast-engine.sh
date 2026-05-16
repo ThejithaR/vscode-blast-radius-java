@@ -9,7 +9,7 @@
 set -euo pipefail
 
 echo "==> mvn package (ast-engine)"
-mvn -f ast-engine/pom.xml package -DskipTests
+#mvn -f ast-engine/pom.xml package -DskipTests
 
 mkdir -p extension/dist
 cp ast-engine/target/blast-radius-ast.jar extension/dist/blast-radius-ast.jar

@@ -1,0 +1,33 @@
+# Source files
+src/**
+tsconfig.json
+*.ts
+
+# Node modules - we'll bundle dependencies differently
+node_modules/**
+
+# Build artifacts
+*.map
+
+# Documentation
+IMPLEMENTATION_GUIDE.md
+
+# Examples (not needed in production)
+examples/**
+
+# Development files
+.gitignore
+.vscode/**
+.editorconfig
+
+# Test files
+test/**
+**/*.test.ts
+**/*.spec.ts
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+
+# Made with Bob
