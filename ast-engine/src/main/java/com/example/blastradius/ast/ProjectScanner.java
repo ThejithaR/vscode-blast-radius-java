@@ -14,7 +14,7 @@ public class ProjectScanner {
     public List<Path> findSourceRoots(Path workspaceRoot) throws IOException {
         List<Path> sourceRoots = new ArrayList<>();
         
-        // Walk workspace and find all pom.xml files
+        // Prefer Maven module roots when pom.xml files are present.
         try (Stream<Path> paths = Files.walk(workspaceRoot)) {
             List<Path> pomFiles = paths
                 .filter(p -> p.getFileName().toString().equals("pom.xml"))
@@ -27,6 +27,15 @@ public class ProjectScanner {
                 if (Files.isDirectory(srcMainJava)) {
                     sourceRoots.add(srcMainJava);
                 }
+            }
+        }
+
+        if (sourceRoots.isEmpty()) {
+            try (Stream<Path> paths = Files.walk(workspaceRoot)) {
+                sourceRoots.addAll(paths
+                    .filter(Files::isDirectory)
+                    .filter(p -> p.endsWith(Path.of("src", "main", "java")))
+                    .collect(Collectors.toList()));
             }
         }
         

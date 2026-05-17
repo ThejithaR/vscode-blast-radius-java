@@ -61,7 +61,7 @@ public class BlastRadiusAstCli {
             List<Path> srcRoots = scanner.findSourceRoots(spec.workspaceRoot());
             
             if (srcRoots.isEmpty()) {
-                System.err.println("No pom.xml found under workspace");
+                System.err.println("No Java source roots found under workspace");
                 System.exit(2);
             }
             
