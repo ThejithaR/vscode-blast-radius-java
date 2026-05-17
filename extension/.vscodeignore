@@ -2,23 +2,23 @@
 src/**
 tsconfig.json
 *.ts
+!dist/**/*.ts
 
-# Node modules - we'll bundle dependencies differently
-node_modules/**
-
-# Build artifacts
+# Build artifacts  
 *.map
 
 # Documentation
 IMPLEMENTATION_GUIDE.md
+md/**
 
-# Examples (not needed in production)
+# Examples
 examples/**
 
 # Development files
 .gitignore
 .vscode/**
 .editorconfig
+tsconfig.tsbuildinfo
 
 # Test files
 test/**
@@ -29,5 +29,11 @@ test/**
 .DS_Store
 *.log
 npm-debug.log*
+
+# Exclude all node_modules
+node_modules/**
+
+# Exclude parent directory
+../**
 
 # Made with Bob

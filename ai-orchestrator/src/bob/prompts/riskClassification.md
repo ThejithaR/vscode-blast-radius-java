@@ -1,6 +1,3 @@
-<!-- TODO(Member 4): Skill 2 — RiskClassification. -->
-<!-- Spec: ../../../visualizer/BOB-SKILLS-SPEC.md#skill-2 -->
-
 For each dependency, assign exactly one risk level using these rules:
 
 - TARGET — reserved for the modified file itself (one node only).
@@ -9,4 +6,9 @@ For each dependency, assign exactly one risk level using these rules:
 - LOW_RISK — peripheral usage (logging, analytics, metrics) where the divergence does not affect user-facing behavior.
 - SAFE — no observable change in behavior for this caller.
 
-Apply package-context weighting (see PackageContextWeighting). The same compile error in `*.api.controllers.*` is CRITICAL while in `*.analytics.logging.*` it may be LOW_RISK.
+Apply package-context weighting: The same compile error in `*.api.controllers.*` is CRITICAL while in `*.analytics.logging.*` it may be LOW_RISK.
+
+Package weighting heuristics:
+- `*.api.controllers.*`, `*.middleware.*`, `*.filters.*` — High weight, stays CRITICAL
+- `*.service.*`, `*.business.*`, `*.domain.*` — Medium weight, default classification
+- `*.analytics.*`, `*.logging.*`, `*.metrics.*`, `*.audit.*` — Low weight, reduces CRITICAL → LOW_RISK
