@@ -78,19 +78,10 @@ export async function analyzeRisk(contractA: any, uri?: string): Promise<Contrac
     await fs.ensureDir(tempDir);
 
     const inputPath = path.join(tempDir, "contract-a.json");
-    const outputPath = path.join(tempDir, "contract-b.json");
-
+  
     // Write Contract A as input
     await fs.writeJson(inputPath, contractA, { spaces: 2 });
     logger.info(`Contract A written to: ${inputPath}`);
-
-    // Check for API key
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
-    if (!apiKey) {
-      logger.warn("No API key found, using example data");
-      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
-      return fs.readJson(examplePath);
-    }
     
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
     if (!apiKey) {
