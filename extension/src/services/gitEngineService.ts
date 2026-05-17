@@ -4,13 +4,9 @@ import { logger } from "../utils/logger.js";
 
 export interface GitDeltaOutput {
   targetFile: string;
-  targetPackage?: string;
+  targetPackage: string;
   gitDiff: string;
-  changedMethods: Array<{
-    methodName: string;
-    startLine: number;
-    endLine: number;
-  }>;
+  changedMethods: string[];
 }
 
 /**

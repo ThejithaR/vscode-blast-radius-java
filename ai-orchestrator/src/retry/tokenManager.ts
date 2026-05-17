@@ -88,14 +88,17 @@ export function truncateContractA(
   // Ensure minimum line length
   const effectiveMaxLength = Math.max(maxLineLength, 50);
   
-  // Truncate usageContextLine fields
+  // Truncate usageContextLine fields in callSites
   return {
     ...contractA,
     dependencies: contractA.dependencies.map(dep => ({
       ...dep,
-      usageContextLine: dep.usageContextLine.length > effectiveMaxLength
-        ? dep.usageContextLine.slice(0, effectiveMaxLength) + '...'
-        : dep.usageContextLine
+      callSites: dep.callSites.map(cs => ({
+        ...cs,
+        usageContextLine: cs.usageContextLine.length > effectiveMaxLength
+          ? cs.usageContextLine.slice(0, effectiveMaxLength) + '...'
+          : cs.usageContextLine
+      }))
     }))
   };
 }

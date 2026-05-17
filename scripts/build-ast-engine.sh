@@ -1,17 +1,28 @@
-#!/usr/bin/env bash
-# Builds the JavaParser AST engine fat-jar and copies it to extension/dist/.
-#
-# Windows PowerShell:
-#   mvn -f ast-engine\pom.xml package -DskipTests
-#   New-Item -ItemType Directory -Force extension\dist | Out-Null
-#   Copy-Item ast-engine\target\blast-radius-ast.jar extension\dist\blast-radius-ast.jar
+#!/bin/bash
+# Build AST engine JAR
 
-set -euo pipefail
+set -e
 
-echo "==> mvn package (ast-engine)"
-#mvn -f ast-engine/pom.xml package -DskipTests
+echo "=========================================="
+echo "Building AST Engine"
+echo "=========================================="
 
-mkdir -p extension/dist
-cp ast-engine/target/blast-radius-ast.jar extension/dist/blast-radius-ast.jar
+# Navigate to ast-engine directory
+cd "$(dirname "$0")/../ast-engine"
 
-echo "==> Fat-jar copied to extension/dist/blast-radius-ast.jar"
+# Build with Maven
+echo "Running Maven package..."
+mvn -q clean package
+
+# Check if JAR was created
+if [ ! -f "target/blast-radius-ast-0.0.1.jar" ]; then
+    echo "ERROR: JAR file not found at target/blast-radius-ast-0.0.1.jar"
+    exit 1
+fi
+
+echo "✓ JAR built successfully: target/blast-radius-ast-0.0.1.jar"
+echo "=========================================="
+echo "AST Engine build complete!"
+echo "=========================================="
+
+# Made with Bob

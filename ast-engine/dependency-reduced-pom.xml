@@ -7,7 +7,7 @@
   <version>0.0.1</version>
   <description>JavaParser-based CLI that discovers downstream callers of a modified Java method.</description>
   <build>
-    <finalName>blast-radius-ast</finalName>
+    <finalName>blast-radius-ast-${project.version}</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
