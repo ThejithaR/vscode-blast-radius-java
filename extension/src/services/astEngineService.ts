@@ -35,7 +35,7 @@ export interface GitDeltaOutput {
 /**
  * Run AST engine to analyze dependencies
  */
-export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDependenciesOutput> {
+export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: string): Promise<AstDependenciesOutput> {
   try {
     logger.info("Running AST engine");
 
@@ -47,7 +47,9 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
       throw new Error("Invalid git output: missing targetPackage");
     }
 
-    const workspaceRoot = process.cwd();
+    // Use the workspace root passed from the caller
+    logger.info(`Using workspace root: ${workspaceRoot}`);
+
     const astEngineJar = path.join(
       workspaceRoot,
       "ast-engine",

@@ -57,7 +57,7 @@ export async function runPipeline(targetFile: string): Promise<void> {
     // Step 2: AST Engine - Analyze dependencies
     logger.info("");
     logger.info("Step 2/5: Analyzing AST dependencies...");
-    const astOutput = await runAstEngine(gitOutput);
+    const astOutput = await runAstEngine(gitOutput, workspaceRoot);
     
     if (!astOutput || !astOutput.dependencies) {
       throw new Error("AST engine failed to produce valid output");
@@ -81,7 +81,7 @@ export async function runPipeline(targetFile: string): Promise<void> {
     // Step 4: AI Analysis - Generate Contract B
     logger.info("");
     logger.info("Step 4/5: Running AI risk analysis...");
-    const contractB = await analyzeRisk(contractA);
+    const contractB = await analyzeRisk(contractA, workspaceRoot);
     
     if (!contractB || !contractB.nodes) {
       throw new Error("AI analysis failed to produce valid Contract B");
