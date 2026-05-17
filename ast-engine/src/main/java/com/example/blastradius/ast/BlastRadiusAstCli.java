@@ -70,10 +70,11 @@ public class BlastRadiusAstCli {
             List<Path> jars = scanner.findResolvedJars(spec.workspaceRoot());
             System.err.println("Found " + jars.size() + " JAR files");
             
-            JavaSymbolSolver solver = new TypeSolverBuilder().build(srcRoots, jars);
+            TypeSolverBuilder builder = new TypeSolverBuilder();
+            JavaSymbolSolver solver = builder.build(srcRoots, jars);
             StaticJavaParser.getParserConfiguration().setSymbolResolver(solver);
             
-            List<Dependency> deps = new DependencyFinder().find(spec, srcRoots);
+            List<Dependency> deps = new DependencyFinder().find(spec, srcRoots, builder.getCombinedSolver());
             
             AstOutputBuilder.printJson(new AstDependenciesOutput(deps));
             
