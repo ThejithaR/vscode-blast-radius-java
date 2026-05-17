@@ -26,13 +26,20 @@ export async function getGitDelta(targetFile: string, workspaceRoot: string): Pr
     
     logger.info(`Using repo root: ${repoRoot}`);
 
-    // Dynamically import git-engine's extract method from lib directory
-    const gitEnginePath = path.join(__dirname, "..", "..", "lib", "git-engine", "dist", "index.js");
-    
+    // Dynamically import git-engine's extract method from extension's lib directory
+    // When compiled, this file is at extension/dist/services/gitEngineService.js
+    // So __dirname = extension/dist/services
+    // We need to go: ../.. (to extension/) then lib/git-engine/dist/index.js
+    const gitEnginePath = path.join(__dirname, "..", "..", "lib", "git-engine", "dist", "git-engine", "src","index.js");
+
+    logger.info(`Loading git-engine from: ${gitEnginePath}`);
+    logger.info(`Current __dirname: ${__dirname}`);
+
     // Check if git-engine is built
     if (!await fs.pathExists(gitEnginePath)) {
-      logger.warn("Git engine not found, using example data");
-      const examplePath = path.join(repoRoot, "extension", "examples", "git-output.json");
+      logger.warn(`Git engine not found at: ${gitEnginePath}`);
+      logger.warn("Using example data");
+      const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
       return fs.readJson(examplePath);
     }
 
@@ -52,7 +59,7 @@ export async function getGitDelta(targetFile: string, workspaceRoot: string): Pr
     logger.error("Failed to get git delta", error);
     
     // Fallback to example data in development
-    const examplePath = path.join(process.cwd(), "extension", "examples", "git-output.json");
+    const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example git-output.json");
       return fs.readJson(examplePath);

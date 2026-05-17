@@ -58,7 +58,9 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     // Check if AST engine JAR exists
     if (!await fs.pathExists(astEngineJar)) {
       logger.warn("AST engine JAR not found, using example data");
-      const examplePath = path.join(workspaceRoot, "extension", "examples", "ast-output.json");
+      // When compiled, __dirname is extension/dist/services
+      // Go up to extension root, then to examples directory
+      const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
       return fs.readJson(examplePath);
     }
 
@@ -126,7 +128,9 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     logger.error("Failed to run AST engine", error);
     
     // Fallback to example data in development
-    const examplePath = path.join(process.cwd(), "extension", "examples", "ast-output.json");
+    // When compiled, __dirname is extension/dist/services
+    // Go up to extension root, then to examples directory
+    const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example ast-output.json");
       return fs.readJson(examplePath);

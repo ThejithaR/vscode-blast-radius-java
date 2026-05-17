@@ -51,6 +51,9 @@ export async function runPipeline(targetFile: string): Promise<void> {
     await writeJson("temp/git-output.json", gitOutput);
     logger.success(`Git changes extracted: ${gitOutput.changedMethods?.length || 0} methods changed`);
 
+    logger.info(`git engine result: ${gitOutput}`);
+
+
     // Step 2: AST Engine - Analyze dependencies
     logger.info("");
     logger.info("Step 2/5: Analyzing AST dependencies...");
