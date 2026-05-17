@@ -1,0 +1,45 @@
+You are implementing the `ast-engine/` component of the Blast Radius Mapper VS Code extension. The full specification is in the attached `ast-engine-plan.md`. Read it end-to-end before writing any code — it tells you the project context, where to find related components, the five locked design decisions, the contract change required, and the seven implementation tasks (Task 0 through Task 6).
+
+## Working mode
+
+- Repo root: `c:\Projects\vscode-blast-radius-java`. All file paths in the handover doc are relative to this root.
+- OS: Windows; primary shell is PowerShell. Use bash equivalents only where called out.
+- You are filling in Java skeleton files that already exist under `ast-engine/src/main/java/com/example/blastradius/ast/`. Do not rename them. Do not change the Maven coordinates, the main class FQN, or the CLI argument names.
+- All log output goes to stderr (`System.err.println`). stdout is reserved for the final JSON. No logging framework.
+- Severity, risk, intent, reason fields are out of scope — those are Bob (the AI orchestrator, Member 4)'s job, not yours.
+- Do not edit files outside `ast-engine/`, `shared/contracts/`, `shared/types/`, `shared/examples/`, or the per-component `examples/` folders listed in §6.1 of the handover. In particular, do not touch any source under `git-engine/src/`, `extension/src/`, `ai-orchestrator/src/`, or `visualizer/src/`.
+
+## This is BATCH <BATCH NUMBER> of 4
+
+We are implementing this task in four batches so each ends with a runnable artifact and a clean verification gate.
+
+- **Batch 1 — Contracts + Models.** Apply Task 0 (the 10-file contract change in §6 of the handover). Then update the Java records — `TargetSpec`, `Dependency`, and the new `CallSite` — to match the new shape. Leave `BlastRadiusAstCli.main` and the engine classes as TODO stubs that compile but exit non-zero. Verify with `npx ajv-cli validate` against both schemas and `mvn -q compile` in `ast-engine/`.
+
+- **Batch 2 — CLI skeleton + workspace discovery + type solver.** Implement Tasks 1, 2, and 3: `BlastRadiusAstCli.main` end-to-end (arg parsing, exit codes, orchestration calls), `ProjectScanner.findSourceRoots` and `findResolvedJars`, `TypeSolverBuilder.build`. Stub `DependencyFinder.find` to return an empty list and `AstOutputBuilder.printJson` to emit `{"dependencies":[]}`. Verify: `mvn -q package` builds `target/blast-radius-ast.jar`; `java -jar` with no args exits 1; with a non-existent workspace exits 2; with a valid workspace + target exits 0 and writes `{"dependencies":[]}` to stdout while logging source-root and jar counts to stderr.
+
+- **Batch 3 — Dependency discovery + output.** Implement Task 4 (`DependencyFinder.find` with both method mode and class-sweep mode, plus `ContextLineExtractor`) and Task 5 (`AstOutputBuilder.printJson`). Verify with Smoke Test 3 (synthetic mini-workspace from §8 of the handover): create the temporary workspace under `C:\tmp\fake-ws\` and run the CLI with `--methods=verifyTokenStructure`. The output must match `shared/examples/ast-dependencies-output.example.json` byte-for-byte after pretty-printing.
+
+- **Batch 4 — Real-world validation.** Run Task 6 — Smoke Tests 1 and 2 against the carbon-identity-framework demo repo (see `demo/README.md` for clone instructions if it isn't already at `demo/repo-under-test/`). Walk through every item in the §11 verification checklist and report pass/fail for each.
+
+Do only the work for the current batch. Do not jump ahead.
+
+## How to execute this batch
+
+1. Re-read the relevant tasks in the handover doc for this batch.
+2. Before writing code, list the files you intend to touch and one sentence on what each change is. Stop and confirm with me if any file is outside the allowed scope.
+3. Implement. Make code blocks in the handover doc canonical: copy class names, package paths, and JavaParser imports verbatim.
+4. Run the verification commands at the end of this batch's description. Paste the output back to me.
+5. If a verification fails, fix the issue — do not declare done. If you're blocked or the spec is ambiguous, ask before guessing.
+6. When verification passes, write a short summary: what files changed, what tests passed, anything you want me to know before the next batch.
+
+## Things you must not do
+
+- Do not modify the Maven `pom.xml` artifact coordinates, version, or main class.
+- Do not add a logging framework. Use `System.err.println` directly.
+- Do not parallelize parsing or symbol resolution. Sequential is correct for MVP.
+- Do not implement `MethodReferenceExpr` handling, OSGi service-locator detection, or Maven Central source-jar resolution — they are explicitly out of scope (§10 of the handover).
+- Do not emit any severity, risk, intent, or reason field in the JSON output.
+- Do not invent new CLI flags, exit codes, or JSON field names beyond what §6 and §7 of the handover specify.
+- Do not auto-commit or push. Stage changes only if asked.
+
+Begin Batch <BATCH NUMBER> now.

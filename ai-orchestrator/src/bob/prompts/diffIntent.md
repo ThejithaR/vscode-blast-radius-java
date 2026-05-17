@@ -1,6 +1,3 @@
-<!-- TODO(Member 4): Skill 1 — DiffIntentAnalysis. -->
-<!-- Spec: ../../../visualizer/BOB-SKILLS-SPEC.md#skill-1 -->
-
 Before classifying any dependency, examine the `gitDiff` and determine the *intent* of the change. Categorize it as one of:
 
 - SIGNATURE_CHANGE — added/removed/changed parameters, return type, or visibility
