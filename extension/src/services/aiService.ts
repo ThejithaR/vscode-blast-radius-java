@@ -1,5 +1,6 @@
 import fs from "fs-extra";
 import path from "path";
+import { pathToFileURL } from "url";
 import { logger } from "../utils/logger.js";
 import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
 
@@ -39,6 +40,38 @@ export interface ContractB {
   };
 }
 
+async function resolveAiOrchestratorPath(workspaceRoot: string): Promise<string | undefined> {
+  const extensionRoot = getExtensionPath();
+  const packagedRoot = path.join(extensionRoot, "lib", "ai-orchestrator");
+  const sourceRoot = path.join(workspaceRoot, "ai-orchestrator");
+  const candidates: string[] = [];
+
+  for (const packageRoot of [packagedRoot, sourceRoot]) {
+    const packageJsonPath = path.join(packageRoot, "package.json");
+    if (await fs.pathExists(packageJsonPath)) {
+      const packageJson = await fs.readJson(packageJsonPath);
+      if (typeof packageJson.main === "string") {
+        candidates.push(path.join(packageRoot, packageJson.main));
+      }
+    }
+  }
+
+  candidates.push(
+    path.join(packagedRoot, "dist", "ai-orchestrator", "src", "index.js"),
+    path.join(sourceRoot, "dist", "ai-orchestrator", "src", "index.js"),
+    path.join(packagedRoot, "dist", "index.js"),
+    path.join(sourceRoot, "dist", "index.js")
+  );
+
+  for (const candidate of [...new Set(candidates)]) {
+    if (await fs.pathExists(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Analyze risk using AI orchestrator
  */
@@ -59,15 +92,10 @@ export async function analyzeRisk(contractA: any, uri?: string): Promise<Contrac
     if (!workspaceRoot) {
       throw new Error("No workspace folder is open");
     }
-    const aiOrchestratorPath = path.join(
-      workspaceRoot,
-      "ai-orchestrator",
-      "dist",
-      "index.js"
-    );
+    const aiOrchestratorPath = await resolveAiOrchestratorPath(workspaceRoot);
 
     // Check if AI orchestrator is built
-    if (!await fs.pathExists(aiOrchestratorPath)) {
+    if (!aiOrchestratorPath) {
       logger.warn("AI orchestrator not found, using example data");
       const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
       return fs.readJson(examplePath);
@@ -78,24 +106,17 @@ export async function analyzeRisk(contractA: any, uri?: string): Promise<Contrac
     await fs.ensureDir(tempDir);
 
     const inputPath = path.join(tempDir, "contract-a.json");
-    const outputPath = path.join(tempDir, "contract-b.json");
-
     // Write Contract A as input
     await fs.writeJson(inputPath, contractA, { spaces: 2 });
     logger.info(`Contract A written to: ${inputPath}`);
 
-    // Check for API key
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
-    if (!apiKey) {
-      logger.warn("No API key found, using example data");
-      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
-      return fs.readJson(examplePath);
-    }
-    
     // Import and call ai-orchestrator's analyze method
-    const aiOrchestrator = await import(aiOrchestratorPath);
+    logger.info(`Loading AI orchestrator from: ${aiOrchestratorPath}`);
+    const aiOrchestrator = await import(pathToFileURL(aiOrchestratorPath).href);
+    logger.info("AI orchestrator loaded; starting Bob analysis");
     const output: ContractB = await aiOrchestrator.analyze(contractA, {
-      apiKey,
+      apiKey: process.env.BOB_API_KEY || process.env.ANTHROPIC_API_KEY,
+      endpoint: process.env.BOB_ENDPOINT,
       maxRetries: 3
     });
 

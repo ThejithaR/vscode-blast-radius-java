@@ -64,7 +64,7 @@ export class BobClient {
         // 3. Execute Bob Shell CLI, passing prompt via stdin to avoid shell injection
         // Suppress stderr to avoid IDE companion warnings mixing with JSON output
         const bobOutput = execSync(
-          'bob',
+          this.getBobCommand(),
           { 
             input: combinedPrompt,
             encoding: 'utf-8',
@@ -136,13 +136,20 @@ export class BobClient {
    */
   private checkBobInstalled(): void {
     try {
-      execSync('bob --version', { stdio: 'ignore' });
+      execSync(`${this.getBobCommand()} --version`, {
+        stdio: 'ignore',
+        timeout: 10000
+      });
     } catch (error) {
       throw new Error(
         'IBM Bob Shell is not installed or not in PATH. ' +
         'Install it from: https://bob.ibm.com/docs/shell'
       );
     }
+  }
+
+  private getBobCommand(): string {
+    return process.platform === 'win32' ? 'bob.cmd' : 'bob';
   }
 
   /**

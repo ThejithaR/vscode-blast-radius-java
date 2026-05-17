@@ -3,7 +3,7 @@ import MermaidVisualizer, {
   type NodeDetails,
 } from "../components/mermaid-visualizer-components/MermaidVisualizer";
 
-type RiskLevel = "TARGET" | "CRITICAL" | "HIGH_RISK" | "LOW_RISK" | "SAFE";
+type RiskLevel = "TARGET" | "CRITICAL" | "WARNING" | "HIGH_RISK" | "LOW_RISK" | "SAFE";
 
 interface GraphNode {
   id: string;
@@ -17,7 +17,13 @@ interface GraphNode {
 interface GraphEdge {
   from: string;
   to: string;
-  type: "direct-dependency" | "cascading-dependency" | "passive-dependency";
+  type:
+    | "breaking-dependency"
+    | "warning-dependency"
+    | "safe-dependency"
+    | "direct-dependency"
+    | "cascading-dependency"
+    | "passive-dependency";
 }
 
 export interface ContractGraphData {
@@ -108,20 +114,29 @@ export const exampleContractGraphData: ContractGraphData = {
 };
 
 function createGraphDataFromContract(contract: ContractGraphData) {
+  const nodeIdMap = new Map<string, string>();
+
+  contract.nodes.forEach((node, index) => {
+    nodeIdMap.set(node.id, toMermaidId(node.id, index));
+  });
+
   return {
-    nodes: contract.nodes.map((node) => ({
-      id: node.id,
+    nodes: contract.nodes.map((node, index) => ({
+      id: nodeIdMap.get(node.id) ?? toMermaidId(node.id, index),
+      originalId: node.id,
       filePath: node.filePath,
       packageName: node.packageName,
       label: node.label,
-      risk: node.risk,
+      risk: normalizeRisk(node.risk),
       reason: node.reason,
     })),
-    edges: contract.edges.map((edge) => ({
-      from: edge.from,
-      to: edge.to,
-      type: edge.type,
-    })),
+    edges: contract.edges
+      .map((edge) => ({
+        from: nodeIdMap.get(edge.from),
+        to: nodeIdMap.get(edge.to),
+        type: edge.type,
+      }))
+      .filter((edge): edge is { from: string; to: string; type: GraphEdge["type"] } => Boolean(edge.from && edge.to)),
   };
 }
 
@@ -153,6 +168,14 @@ const riskTheme: Record<
     dot: "#fdba74",
     text: "#fed7aa",
   },
+  WARNING: {
+    label: "Warning",
+    cardBorder: "#f97316",
+    pillBg: "#7c2d12",
+    pillBorder: "#fb923c",
+    dot: "#fdba74",
+    text: "#fed7aa",
+  },
   LOW_RISK: {
     label: "Low Risk",
     cardBorder: "#f59e0b",
@@ -171,6 +194,19 @@ const riskTheme: Record<
   },
 };
 
+const normalizeRisk = (risk: string): RiskLevel => {
+  if (risk === "TARGET" || risk === "CRITICAL" || risk === "WARNING" || risk === "HIGH_RISK" || risk === "LOW_RISK" || risk === "SAFE") {
+    return risk;
+  }
+
+  return "LOW_RISK";
+};
+
+const toMermaidId = (id: string, index: number) => {
+  const normalized = id.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^[^a-zA-Z_]+/, "");
+  return normalized ? `node_${index}_${normalized}` : `node_${index}`;
+};
+
 const escapeXml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -180,7 +216,7 @@ const escapeXml = (value: string) =>
     .replace(/'/g, "&apos;");
 
 const createNodeSvg = (node: GraphNode) => {
-  const theme = riskTheme[node.risk];
+  const theme = riskTheme[normalizeRisk(node.risk)];
   const pillWidth = Math.max(88, theme.label.length * 8 + 44);
 
   return encodeURIComponent(`
@@ -202,7 +238,7 @@ const createNodeSvg = (node: GraphNode) => {
 
 const createNodeLine = (node: GraphNode) => {
   const nodeSvg = createNodeSvg(node);
-  const altText = escapeXml(`${riskTheme[node.risk].label} ${node.label}`);
+  const altText = escapeXml(`${riskTheme[normalizeRisk(node.risk)].label} ${node.label}`);
 
   return `    ${node.id}["<div style='width:312px;height:128px;line-height:0;overflow:visible;'><img src='data:image/svg+xml,${nodeSvg}' style='display:block;width:312px;height:128px;' width='312' height='128' alt='${altText}' /></div>"]
     style ${node.id} fill:transparent,stroke:transparent,color:transparent`;
@@ -234,7 +270,7 @@ export function MermaidVisualizerPage({ contractGraphData }: MermaidVisualizerPa
           {
             fileName: node.label,
             packageName: node.packageName,
-            risk: riskTheme[node.risk].label,
+            risk: riskTheme[normalizeRisk(node.risk)].label,
             reason: node.reason,
           },
         ]),

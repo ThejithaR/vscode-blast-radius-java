@@ -2,7 +2,31 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { logger } from "../utils/logger.js";
 
-export interface ContractB {
+type CurrentRiskLevel = "TARGET" | "CRITICAL" | "WARNING" | "LOW_RISK" | "SAFE";
+type GraphRiskLevel = CurrentRiskLevel | "HIGH_RISK";
+type CurrentEdgeType = "breaking-dependency" | "warning-dependency" | "safe-dependency";
+
+interface CurrentContractB {
+  targetFile: string;
+  targetPackage: string;
+  overallRiskScore: CurrentRiskLevel;
+  summary: string;
+  nodes: Array<{
+    id: string;
+    filePath: string;
+    packageName: string;
+    label: string;
+    risk: CurrentRiskLevel;
+    reason: string;
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    type: CurrentEdgeType;
+  }>;
+}
+
+interface LegacyContractB {
   metadata: {
     timestamp: string;
     targetFile: string;
@@ -38,12 +62,35 @@ export interface ContractB {
   };
 }
 
+type ContractGraphData = {
+  targetFile: string;
+  targetPackage: string;
+  overallRiskScore: GraphRiskLevel;
+  summary: string;
+  nodes: Array<{
+    id: string;
+    filePath: string;
+    packageName: string;
+    label: string;
+    risk: GraphRiskLevel;
+    reason: string;
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    type: CurrentEdgeType | "direct-dependency" | "cascading-dependency" | "passive-dependency";
+  }>;
+};
+
+export type ContractB = CurrentContractB | LegacyContractB;
+
 /**
  * Generate markdown report from Contract B
  */
-export async function generateMarkdown(contractB: ContractB): Promise<string> {
+export async function generateMarkdown(contractB: any): Promise<string> {
   try {
     logger.info("Generating markdown report");
+    contractB = transformContractBForReport(contractB);
 
     // Validate input
     if (!contractB || !contractB.summary || !contractB.nodes) {
@@ -120,12 +167,12 @@ export async function generateMarkdown(contractB: ContractB): Promise<string> {
       
       contractB.nodes.forEach((node: any) => {
         const style = getRiskStyle(node.riskLevel);
-        md += `  ${node.id}["${node.label}"]:::${style}\n`;
+        md += `  ${toMermaidId(node.id)}["${escapeMermaidLabel(node.label)}"]:::${style}\n`;
       });
       
       contractB.edges.forEach((edge: any) => {
         const label = edge.label ? `|${edge.label}|` : '';
-        md += `  ${edge.source} -->${label} ${edge.target}\n`;
+        md += `  ${toMermaidId(edge.source)} -->${label} ${toMermaidId(edge.target)}\n`;
       });
       
       md += `  classDef critical fill:#ff4444,stroke:#cc0000,color:#fff\n`;
@@ -238,31 +285,30 @@ export async function openVisualizer(
 
     // Replace asset paths in HTML
     html = html.replace(
-      /\/assets\//g,
+      /(?:\.\/|\/)assets\//g,
       `${scriptUri.toString()}/`
     );
 
-    // Set HTML content
-    panel.webview.html = html;
-
-    // Wait for webview to be ready, then send Contract B
+    // Wait for webview to be ready, then send Contract B.
     panel.webview.onDidReceiveMessage(
       (message) => {
         if (message.type === "WEBVIEW_READY") {
-          // Transform Contract B to match visualizer's expected format
           const contractGraphData = transformContractBToGraphData(contractB);
-          
+
           panel.webview.postMessage({
             type: "CONTRACT_B",
             payload: contractGraphData
           });
-          
+
           logger.success("Contract B sent to visualizer");
         }
       },
       undefined,
       context.subscriptions
     );
+
+    // Set HTML content
+    panel.webview.html = html;
 
     logger.success("Visualizer webview opened");
 
@@ -275,22 +321,22 @@ export async function openVisualizer(
 /**
  * Transform Contract B format to ContractGraphData format expected by visualizer
  */
-function transformContractBToGraphData(contractB: ContractB): any {
-  // Map risk levels from Contract B to visualizer format
-  const riskLevelMap: Record<string, string> = {
+function transformContractBToGraphData(contractB: ContractB): ContractGraphData {
+  if (isCurrentContractB(contractB)) {
+    return contractB;
+  }
+
+  const riskLevelMap: Record<string, GraphRiskLevel> = {
     critical: "CRITICAL",
     high: "HIGH_RISK",
-    medium: "LOW_RISK",
+    medium: "WARNING",
     low: "SAFE"
   };
-
-  // // Find target node (first node or one with highest risk)
-  // const targetNode = contractB.nodes[0];
 
   return {
     targetFile: contractB.metadata.targetFile,
     targetPackage: extractPackageName(contractB.metadata.targetFile),
-    overallRiskScore: riskLevelMap[(contractB.summary.overallRisk || 'high').toLowerCase()] || "HIGH_RISK",
+    overallRiskScore: riskLevelMap[(contractB.summary.overallRisk || "high").toLowerCase()] || "HIGH_RISK",
     summary: contractB.summary.keyFindings.join(" "),
     nodes: contractB.nodes.map((node, index) => ({
       id: node.id,
@@ -300,14 +346,106 @@ function transformContractBToGraphData(contractB: ContractB): any {
       risk: index === 0 ? "TARGET" : (riskLevelMap[node.riskLevel] || "LOW_RISK"),
       reason: node.reasons.join(" ")
     })),
-    edges: contractB.edges.map(edge => ({
+    edges: contractB.edges.map((edge) => ({
       from: edge.source,
       to: edge.target,
-      type: edge.type === "direct" ? "direct-dependency" : 
-            edge.type === "cascading" ? "cascading-dependency" : 
+      type: edge.type === "direct" ? "direct-dependency" :
+            edge.type === "cascading" ? "cascading-dependency" :
             "passive-dependency"
     }))
   };
+}
+
+function transformContractBForReport(contractB: ContractB): LegacyContractB {
+  if (!isCurrentContractB(contractB)) {
+    return contractB;
+  }
+
+  const riskCounts = {
+    critical: 0,
+    high: 0,
+    medium: 0,
+    low: 0
+  };
+
+  for (const node of contractB.nodes) {
+    const risk = currentRiskToLegacyRisk(node.risk);
+    riskCounts[risk] += 1;
+  }
+
+  return {
+    metadata: {
+      timestamp: new Date().toISOString(),
+      targetFile: contractB.targetFile,
+      analysisVersion: "1.0.0"
+    },
+    nodes: contractB.nodes.map((node) => ({
+      id: node.id,
+      label: node.label,
+      type: "file",
+      file: node.filePath,
+      riskLevel: currentRiskToLegacyRisk(node.risk),
+      riskScore: currentRiskToScore(node.risk),
+      reasons: [node.reason]
+    })),
+    edges: contractB.edges.map((edge) => ({
+      source: edge.from,
+      target: edge.to,
+      type: edge.type === "breaking-dependency" ? "direct" :
+            edge.type === "warning-dependency" ? "cascading" :
+            "passive"
+    })),
+    summary: {
+      totalNodes: contractB.nodes.length,
+      totalEdges: contractB.edges.length,
+      riskDistribution: riskCounts,
+      overallRisk: currentRiskToLegacyRisk(contractB.overallRiskScore),
+      keyFindings: contractB.summary ? [contractB.summary] : []
+    }
+  };
+}
+
+function isCurrentContractB(contractB: ContractB): contractB is CurrentContractB {
+  return "targetFile" in contractB && Array.isArray(contractB.nodes) &&
+    contractB.nodes.every((node) => "filePath" in node && "risk" in node);
+}
+
+function currentRiskToLegacyRisk(risk: GraphRiskLevel): "critical" | "high" | "medium" | "low" {
+  if (risk === "TARGET" || risk === "CRITICAL") {
+    return "critical";
+  }
+  if (risk === "HIGH_RISK") {
+    return "high";
+  }
+  if (risk === "WARNING") {
+    return "medium";
+  }
+  return "low";
+}
+
+function currentRiskToScore(risk: GraphRiskLevel): number {
+  if (risk === "TARGET" || risk === "CRITICAL") {
+    return 95;
+  }
+  if (risk === "HIGH_RISK") {
+    return 80;
+  }
+  if (risk === "WARNING") {
+    return 60;
+  }
+  if (risk === "LOW_RISK") {
+    return 35;
+  }
+  return 10;
+}
+
+function toMermaidId(id: string): string {
+  const normalized = id.replace(/[^a-zA-Z0-9_]/g, "_").replace(/^[^a-zA-Z_]+/, "");
+  return normalized || "node";
+}
+
+function escapeMermaidLabel(label: string): string {
+  return label.replace(/"/g, '\\"');
 }
 
 /**

@@ -2,10 +2,10 @@
   "name": "@blast-radius/ai-orchestrator",
   "version": "0.0.1",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/ai-orchestrator/src/index.js",
+  "types": "dist/ai-orchestrator/src/index.d.ts",
   "scripts": {
-    "build": "tsc -p ./tsconfig.json",
+    "build": "tsc -p ./tsconfig.json && node scripts/copy-prompts.mjs",
     "watch": "tsc -p ./tsconfig.json --watch",
     "test": "node --loader ts-node/esm --test src/**/*.spec.ts"
   },
