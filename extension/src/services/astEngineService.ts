@@ -3,7 +3,7 @@ import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { logger } from "../utils/logger.js";
-import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
+import { getExtensionPath } from "../utils/extensionPaths.js";
 
 const execAsync = promisify(exec);
 
@@ -48,7 +48,6 @@ export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: str
       throw new Error("Invalid git output: missing targetPackage");
     }
 
-    const workspaceRoot = getWorkspaceRoot();
     if (!workspaceRoot) {
       throw new Error("No workspace folder is open");
     }
@@ -92,7 +91,7 @@ export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: str
     
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 50 * 1024 * 1024,  // 50MB for large output
-      timeout: 12000,  // 5 minutes
+      timeout: 300000,  // 5 minutes — type-solver setup on carbon-identity-framework alone takes 20-40s
       cwd: workspaceRoot
     });
 
