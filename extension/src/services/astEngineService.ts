@@ -3,6 +3,7 @@ import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { logger } from "../utils/logger.js";
+import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
 
 const execAsync = promisify(exec);
 
@@ -47,20 +48,23 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
       throw new Error("Invalid git output: missing targetPackage");
     }
 
-    const workspaceRoot = process.cwd();
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      throw new Error("No workspace folder is open");
+    }
+    // The fat-jar ships inside the extension (see scripts/build-extension.vsix.sh).
+    // --workspace= passed to the jar still points at the user's open repo below.
     const astEngineJar = path.join(
-      workspaceRoot,
+      getExtensionPath(),
+      "lib",
       "ast-engine",
-      "target",
-      "blast-radius-ast-0.0.1.jar"
+      "blast-radius-ast.jar"
     );
 
     // Check if AST engine JAR exists
     if (!await fs.pathExists(astEngineJar)) {
-      logger.warn("AST engine JAR not found, using example data");
-      // When compiled, __dirname is extension/dist/services
-      // Go up to extension root, then to examples directory
-      const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
+      logger.warn(`AST engine JAR not found at ${astEngineJar}, using example data`);
+      const examplePath = path.join(getExtensionPath(), "examples", "ast-output.json");
       return fs.readJson(examplePath);
     }
 
@@ -126,11 +130,9 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     }
 
     logger.error("Failed to run AST engine", error);
-    
-    // Fallback to example data in development
-    // When compiled, __dirname is extension/dist/services
-    // Go up to extension root, then to examples directory
-    const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
+
+    // Fallback to example data shipped with the extension
+    const examplePath = path.join(getExtensionPath(), "examples", "ast-output.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example ast-output.json");
       return fs.readJson(examplePath);

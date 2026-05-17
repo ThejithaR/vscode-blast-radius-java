@@ -3,6 +3,7 @@ import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { logger } from "../utils/logger.js";
+import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
 
 const execAsync = promisify(exec);
 
@@ -54,7 +55,10 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
       throw new Error("Invalid Contract A: missing targetFile");
     }
 
-    const workspaceRoot = process.cwd();
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      throw new Error("No workspace folder is open");
+    }
     const aiOrchestratorPath = path.join(
       workspaceRoot,
       "ai-orchestrator",
@@ -65,7 +69,7 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
     // Check if AI orchestrator is built
     if (!await fs.pathExists(aiOrchestratorPath)) {
       logger.warn("AI orchestrator not found, using example data");
-      const examplePath = path.join(workspaceRoot, "extension", "src", "examples", "contract-b.json");
+      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
       return fs.readJson(examplePath);
     }
 
@@ -84,7 +88,7 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
     if (!apiKey) {
       logger.warn("No API key found, using example data");
-      const examplePath = path.join(workspaceRoot, "extension", "src", "examples", "contract-b.json");
+      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
       return fs.readJson(examplePath);
     }
 
@@ -131,11 +135,11 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
 
   } catch (error) {
     logger.error("Failed to run AI analysis", error);
-    
-    // Fallback to example data in development
-    const examplePath = path.join(process.cwd(), "extension", "src", "examples", "contract-b.json");
+
+    // Fallback to example data shipped with the extension
+    const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
     if (await fs.pathExists(examplePath)) {
-      logger.warn("Falling back to example contract-b.json");
+      logger.warn("Falling back to example contract-b.example.json");
       return fs.readJson(examplePath);
     }
     

@@ -11,8 +11,10 @@ tsconfig.json
 IMPLEMENTATION_GUIDE.md
 md/**
 
-# Examples
-examples/**
+# Examples — kept in the vsix for fallback when real components aren't built.
+# Sources stay excluded; only the JSON fixtures ship.
+# (examples/**/*.json is included implicitly by NOT being excluded.)
+examples/**/*.md
 
 # Development files
 .gitignore

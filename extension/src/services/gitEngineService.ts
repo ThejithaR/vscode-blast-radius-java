@@ -1,6 +1,8 @@
 import fs from "fs-extra";
 import path from "path";
+import { pathToFileURL } from "url";
 import { logger } from "../utils/logger.js";
+import { getExtensionPath } from "../utils/extensionPaths.js";
 
 export interface GitDeltaOutput {
   targetFile: string;
@@ -26,25 +28,24 @@ export async function getGitDelta(targetFile: string, workspaceRoot: string): Pr
     
     logger.info(`Using repo root: ${repoRoot}`);
 
-    // Dynamically import git-engine's extract method from extension's lib directory
-    // When compiled, this file is at extension/dist/services/gitEngineService.js
-    // So __dirname = extension/dist/services
-    // We need to go: ../.. (to extension/) then lib/git-engine/dist/index.js
-    const gitEnginePath = path.join(__dirname, "..", "..", "lib", "git-engine", "dist", "git-engine", "src","index.js");
+    // Resolve from the installed extension root (esbuild bundle means __dirname is unreliable).
+    const extensionRoot = getExtensionPath();
+    const gitEnginePath = path.join(extensionRoot, "lib", "git-engine", "dist", "git-engine", "src", "index.js");
 
     logger.info(`Loading git-engine from: ${gitEnginePath}`);
-    logger.info(`Current __dirname: ${__dirname}`);
 
     // Check if git-engine is built
     if (!await fs.pathExists(gitEnginePath)) {
       logger.warn(`Git engine not found at: ${gitEnginePath}`);
       logger.warn("Using example data");
-      const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
+      const examplePath = path.join(extensionRoot, "examples", "git-output.json");
       return fs.readJson(examplePath);
     }
 
-    // Import and call git-engine's extract method
-    const gitEngine = await import(gitEnginePath);
+    // Import and call git-engine's extract method.
+    // On Windows, await import() requires a file:// URL — a bare "c:\..." path
+    // is rejected as ERR_UNSUPPORTED_ESM_URL_SCHEME.
+    const gitEngine = await import(pathToFileURL(gitEnginePath).href);
     const output = await gitEngine.extract(targetFile, repoRoot);
 
     // Validate output structure
@@ -58,8 +59,8 @@ export async function getGitDelta(targetFile: string, workspaceRoot: string): Pr
   } catch (error) {
     logger.error("Failed to get git delta", error);
     
-    // Fallback to example data in development
-    const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
+    // Fallback to example data shipped with the extension
+    const examplePath = path.join(getExtensionPath(), "examples", "git-output.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example git-output.json");
       return fs.readJson(examplePath);

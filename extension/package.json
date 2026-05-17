@@ -30,8 +30,9 @@
     ]
   },
   "scripts": {
-    "build": "tsc -p ./tsconfig.json",
-    "watch": "tsc -p ./tsconfig.json --watch",
+    "typecheck": "tsc -p ./tsconfig.json --noEmit",
+    "build": "node esbuild.config.js",
+    "watch": "node esbuild.config.js --watch",
     "vscode:prepublish": "npm run build",
     "package": "vsce package --no-dependencies"
   },
@@ -51,6 +52,7 @@
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.20.2",
     "typescript": "^5.3.0"
   }
 }

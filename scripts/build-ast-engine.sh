@@ -14,13 +14,14 @@ cd "$(dirname "$0")/../ast-engine"
 echo "Running Maven package..."
 mvn -q clean package
 
-# Check if JAR was created
-if [ ! -f "target/blast-radius-ast-0.0.1.jar" ]; then
-    echo "ERROR: JAR file not found at target/blast-radius-ast-0.0.1.jar"
+# Check if a shaded JAR was produced (filename may vary with pom.xml <finalName>)
+JAR_FILE=$(ls target/blast-radius-ast*.jar 2>/dev/null | grep -v '^target/original-' | head -n1)
+if [ -z "$JAR_FILE" ]; then
+    echo "ERROR: No blast-radius-ast JAR found under target/"
     exit 1
 fi
 
-echo "✓ JAR built successfully: target/blast-radius-ast-0.0.1.jar"
+echo "✓ JAR built successfully: $JAR_FILE"
 echo "=========================================="
 echo "AST Engine build complete!"
 echo "=========================================="
