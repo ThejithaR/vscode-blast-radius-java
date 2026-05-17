@@ -1,7 +1,0 @@
-{
-  "name": "@blast-radius/shared",
-  "version": "0.0.1",
-  "private": true,
-  "main": "types/index.ts",
-  "types": "types/index.ts"
-}
