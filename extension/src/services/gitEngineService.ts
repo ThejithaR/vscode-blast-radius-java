@@ -1,25 +1,18 @@
 import fs from "fs-extra";
 import path from "path";
-import { exec } from "child_process";
-import { promisify } from "util";
 import { logger } from "../utils/logger.js";
-
-const execAsync = promisify(exec);
 
 export interface GitDeltaOutput {
   targetFile: string;
+  targetPackage: string;
   gitDiff: string;
-  changedMethods: Array<{
-    methodName: string;
-    startLine: number;
-    endLine: number;
-  }>;
+  changedMethods: string[];
 }
 
 /**
- * Get git delta for the target file using git-engine
+ * Get git delta for the target file using git-engine's extract method
  */
-export async function getGitDelta(targetFile: string): Promise<GitDeltaOutput> {
+export async function getGitDelta(targetFile: string, workspaceRoot: string): Promise<GitDeltaOutput> {
   try {
     logger.info(`Getting git delta for: ${targetFile}`);
 
@@ -28,36 +21,31 @@ export async function getGitDelta(targetFile: string): Promise<GitDeltaOutput> {
       throw new Error(`Target file does not exist: ${targetFile}`);
     }
 
-    // Get workspace root (go up from extension directory)
-    const workspaceRoot = process.cwd();
-    const gitEnginePath = path.join(workspaceRoot, "git-engine", "dist", "index.js");
+    // Use the workspace root passed from the caller
+    const repoRoot = workspaceRoot;
+    
+    logger.info(`Using repo root: ${repoRoot}`);
+
+    // Dynamically import git-engine's extract method from extension's lib directory
+    // When compiled, this file is at extension/dist/services/gitEngineService.js
+    // So __dirname = extension/dist/services
+    // We need to go: ../.. (to extension/) then lib/git-engine/dist/index.js
+    const gitEnginePath = path.join(__dirname, "..", "..", "lib", "git-engine", "dist", "git-engine", "src","index.js");
+
+    logger.info(`Loading git-engine from: ${gitEnginePath}`);
+    logger.info(`Current __dirname: ${__dirname}`);
 
     // Check if git-engine is built
     if (!await fs.pathExists(gitEnginePath)) {
-      logger.warn("Git engine not found, using example data");
-      return fs.readJson(path.join(workspaceRoot, "extension", "src", "examples", "git-output.json"));
+      logger.warn(`Git engine not found at: ${gitEnginePath}`);
+      logger.warn("Using example data");
+      const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
+      return fs.readJson(examplePath);
     }
 
-    // Execute git-engine
-    logger.info(`Executing git-engine: ${gitEnginePath}`);
-    const { stdout, stderr } = await execAsync(
-      `node "${gitEnginePath}" "${targetFile}"`,
-      {
-        maxBuffer: 10 * 1024 * 1024, // 10MB
-        timeout: 30000, // 30 seconds
-        cwd: workspaceRoot
-      }
-    );
-
-    if (stderr) {
-      logger.warn(`Git engine stderr: ${stderr}`);
-    }
-
-    if (!stdout || stdout.trim().length === 0) {
-      throw new Error("Git engine produced no output");
-    }
-
-    const output: GitDeltaOutput = JSON.parse(stdout);
+    // Import and call git-engine's extract method
+    const gitEngine = await import(gitEnginePath);
+    const output = await gitEngine.extract(targetFile, repoRoot);
 
     // Validate output structure
     if (!output.targetFile || !output.gitDiff) {
@@ -71,7 +59,7 @@ export async function getGitDelta(targetFile: string): Promise<GitDeltaOutput> {
     logger.error("Failed to get git delta", error);
     
     // Fallback to example data in development
-    const examplePath = path.join(process.cwd(), "extension", "src", "examples", "git-output.json");
+    const examplePath = path.join(__dirname, "..", "..", "examples", "git-output.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example git-output.json");
       return fs.readJson(examplePath);

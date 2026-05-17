@@ -1,35 +1,34 @@
 import { logger } from "../utils/logger.js";
+import { GitDeltaOutput, AstDependenciesOutput } from "../services/astEngineService.js";
+
+// Types matching shared/types/contractA.ts
+export interface CallSite {
+  callerMethod: string;
+  lineNumber: number;
+  usageContextLine: string;
+}
+
+export interface ContractADependency {
+  filePath: string;
+  packageName: string;
+  importedSymbols: string[];
+  callSites: CallSite[];
+}
 
 export interface ContractA {
-  metadata: {
-    timestamp: string;
-    targetFile: string;
-    analysisVersion: string;
-  };
   targetFile: string;
+  targetPackage: string;
   gitDiff: string;
-  changedMethods: Array<{
-    methodName: string;
-    startLine: number;
-    endLine: number;
-  }>;
-  dependencies: Array<{
-    sourceFile: string;
-    sourceLine: number;
-    sourceSymbol: string;
-    targetFile: string;
-    targetSymbol: string;
-    dependencyType: string;
-    context?: string;
-  }>;
+  changedMethods: string[];
+  dependencies: ContractADependency[];
 }
 
 /**
  * Assemble Contract A from git and AST outputs
  */
 export function assembleContractA(
-  gitOutput: any,
-  astOutput: any
+  gitOutput: GitDeltaOutput,
+  astOutput: AstDependenciesOutput
 ): ContractA {
   try {
     logger.info("Assembling Contract A");
@@ -44,17 +43,16 @@ export function assembleContractA(
     if (!gitOutput.targetFile) {
       throw new Error("Git output missing targetFile");
     }
+    if (!gitOutput.targetPackage) {
+      throw new Error("Git output missing targetPackage");
+    }
     if (!gitOutput.gitDiff) {
       throw new Error("Git output missing gitDiff");
     }
 
     const contractA: ContractA = {
-      metadata: {
-        timestamp: new Date().toISOString(),
-        targetFile: gitOutput.targetFile,
-        analysisVersion: "1.0.0"
-      },
       targetFile: gitOutput.targetFile,
+      targetPackage: gitOutput.targetPackage,
       gitDiff: gitOutput.gitDiff,
       changedMethods: gitOutput.changedMethods || [],
       dependencies: astOutput.dependencies || []
@@ -62,7 +60,7 @@ export function assembleContractA(
 
     // Validate assembled contract
     if (contractA.changedMethods.length === 0) {
-      logger.warn("No changed methods detected");
+      logger.warn("No changed methods detected - will use class-sweep mode");
     }
     if (contractA.dependencies.length === 0) {
       logger.warn("No dependencies found");

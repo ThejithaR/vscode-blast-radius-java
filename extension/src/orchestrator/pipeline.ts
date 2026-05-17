@@ -32,13 +32,17 @@ export async function runPipeline(targetFile: string): Promise<void> {
     logger.info("=".repeat(60));
     logger.info(`Target file: ${targetFile}`);
 
+    // Get workspace root
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+    logger.info(`Workspace root: ${workspaceRoot}`);
+
     // Ensure output directories exist
     await ensureDirectories();
 
     // Step 1: Git Engine - Extract changes
     logger.info("");
     logger.info("Step 1/5: Extracting Git changes...");
-    const gitOutput = await getGitDelta(targetFile);
+    const gitOutput = await getGitDelta(targetFile, workspaceRoot);
     
     if (!gitOutput || !gitOutput.targetFile) {
       throw new Error("Git engine failed to produce valid output");
@@ -46,6 +50,9 @@ export async function runPipeline(targetFile: string): Promise<void> {
 
     await writeJson("temp/git-output.json", gitOutput);
     logger.success(`Git changes extracted: ${gitOutput.changedMethods?.length || 0} methods changed`);
+
+    logger.info(`git engine result: ${gitOutput}`);
+
 
     // Step 2: AST Engine - Analyze dependencies
     logger.info("");
@@ -105,7 +112,6 @@ export async function runPipeline(targetFile: string): Promise<void> {
     logger.info("=".repeat(60));
 
     // Open report in preview
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
     const fullReportPath = path.join(workspaceRoot, reportPath);
     const uri = vscode.Uri.file(fullReportPath);
 
