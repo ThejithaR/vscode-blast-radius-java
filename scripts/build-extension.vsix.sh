@@ -33,7 +33,7 @@ cp -r shared/types extension/lib/shared/
 cp shared/package.json extension/lib/shared/
 
 echo "==> tsc (extension)"
-npm --workspace @blast-radius/extension run build
+cd extension && npm run build && cd ..
 
 echo "==> vsce package"
 (cd extension && npx vsce package --baseContentUrl https://github.com/ThejithaR/vscode-blast-radius-java/raw/main/extension --baseImagesUrl https://github.com/ThejithaR/vscode-blast-radius-java/raw/main/extension)
