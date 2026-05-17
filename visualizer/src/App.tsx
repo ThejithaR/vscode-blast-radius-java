@@ -1,1 +1,16 @@
-// TODO(Member 5): Root component. useContractB() hook. If null → <EmptyState />. Else render <SummaryPanel /> + <BlastRadiusGraph /> + <RiskLegend />.
+import { Link, Route, Routes } from 'react-router';
+import { MermaidVisualizerPage } from './pages/mermaid-visualizer';
+
+export default function App() {
+  return (
+    <>
+      <nav>
+        <Link to="/mermaid-visualizer">Mermaid Visualizer</Link>
+      </nav>
+
+      <Routes>
+        <Route path="/mermaid-visualizer" element={<MermaidVisualizerPage />} />
+      </Routes>
+    </>
+  );
+}
