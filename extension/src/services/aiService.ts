@@ -41,9 +41,13 @@ export interface ContractB {
 /**
  * Analyze risk using AI orchestrator
  */
-export async function analyzeRisk(contractA: any): Promise<ContractB> {
+export async function analyzeRisk(contractA: any, uri?: string): Promise<ContractB> {
   try {
     logger.info("Running AI risk analysis");
+
+    if (uri && !(await fs.pathExists(uri))) {
+      throw new Error(`URI path does not exist: ${uri}`);
+    }
 
     // Validate input
     if (!contractA || !contractA.targetFile) {
@@ -66,10 +70,17 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
       const examplePath = path.join(__dirname, "..", "..", "examples", "contract-b.example.json");
       return fs.readJson(examplePath);
     }
-
+    
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
+    if (!apiKey) {
+      logger.warn("No API key found, using example data");
+      const examplePath = path.join(__dirname, "..", "..", "examples", "contract-b.example.json");
+      return fs.readJson(examplePath);
+    }
     // Import and call ai-orchestrator's analyze method
     const aiOrchestrator = await import(aiOrchestratorPath);
     const output: ContractB = await aiOrchestrator.analyze(contractA, {
+      apiKey,
       maxRetries: 3
     });
 
