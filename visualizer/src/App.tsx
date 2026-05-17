@@ -1,15 +1,14 @@
-import { Link, Route, Routes } from 'react-router';
-import { MermaidVisualizerPage } from './pages/mermaid-visualizer';
+import { Route, Routes } from "react-router";
+import { exampleContractGraphData, MermaidVisualizerPage } from "./pages/mermaid-visualizer";
 
 export default function App() {
   return (
     <>
-      <nav>
-        <Link to="/mermaid-visualizer">Mermaid Visualizer</Link>
-      </nav>
-
       <Routes>
-        <Route path="/mermaid-visualizer" element={<MermaidVisualizerPage />} />
+        <Route
+          path="/mermaid-visualizer"
+          element={<MermaidVisualizerPage contractGraphData={exampleContractGraphData} />}
+        />
       </Routes>
     </>
   );
