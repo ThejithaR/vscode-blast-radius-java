@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
 import { logger } from "../utils/logger.js";
+import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
 
 export interface ContractB {
   metadata: {
@@ -50,20 +51,40 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
       throw new Error("Invalid Contract A: missing targetFile");
     }
 
-    // Dynamically import ai-orchestrator's analyze method from extension's lib directory
-    // When compiled, this file is at extension/dist/services/aiService.js
-    // So __dirname = extension/dist/services
-    // We need to go: ../.. (to extension/) then lib/ai-orchestrator/dist/index.js
-    const aiOrchestratorPath = path.join(__dirname, "..", "..", "lib", "ai-orchestrator", "dist", "ai-orchestrator", "src", "index.js");
-
-    logger.info(`Loading AI orchestrator from: ${aiOrchestratorPath}`);
-    logger.info(`Current __dirname: ${__dirname}`);
+    const workspaceRoot = getWorkspaceRoot();
+    if (!workspaceRoot) {
+      throw new Error("No workspace folder is open");
+    }
+    const aiOrchestratorPath = path.join(
+      workspaceRoot,
+      "ai-orchestrator",
+      "dist",
+      "index.js"
+    );
 
     // Check if AI orchestrator is built
     if (!await fs.pathExists(aiOrchestratorPath)) {
-      logger.warn(`AI orchestrator not found at: ${aiOrchestratorPath}`);
-      logger.warn("Using example data");
-      const examplePath = path.join(__dirname, "..", "..", "examples", "contract-b.example.json");
+      logger.warn("AI orchestrator not found, using example data");
+      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
+      return fs.readJson(examplePath);
+    }
+
+    // Create temp directory
+    const tempDir = path.join(workspaceRoot, "temp");
+    await fs.ensureDir(tempDir);
+
+    const inputPath = path.join(tempDir, "contract-a.json");
+    const outputPath = path.join(tempDir, "contract-b.json");
+
+    // Write Contract A as input
+    await fs.writeJson(inputPath, contractA, { spaces: 2 });
+    logger.info(`Contract A written to: ${inputPath}`);
+
+    // Check for API key
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
+    if (!apiKey) {
+      logger.warn("No API key found, using example data");
+      const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
       return fs.readJson(examplePath);
     }
 
@@ -86,9 +107,9 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
 
   } catch (error) {
     logger.error("Failed to run AI analysis", error);
-    
-    // Fallback to example data in development
-    const examplePath = path.join(__dirname, "..", "..", "examples", "contract-b.example.json");
+
+    // Fallback to example data shipped with the extension
+    const examplePath = path.join(getExtensionPath(), "examples", "contract-b.example.json");
     if (await fs.pathExists(examplePath)) {
       logger.warn("Falling back to example contract-b.example.json");
       return fs.readJson(examplePath);

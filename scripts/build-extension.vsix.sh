@@ -21,6 +21,7 @@ echo "==> Copying workspace dependencies to extension/lib"
 mkdir -p extension/lib/git-engine
 mkdir -p extension/lib/ai-orchestrator
 mkdir -p extension/lib/shared
+mkdir -p extension/lib/ast-engine
 
 # Copy only necessary files
 cp -r git-engine/dist extension/lib/git-engine/
@@ -31,6 +32,16 @@ cp ai-orchestrator/package.json extension/lib/ai-orchestrator/
 
 cp -r shared/types extension/lib/shared/
 cp shared/package.json extension/lib/shared/
+
+# Ship the AST engine fat-jar so the extension is self-contained.
+# Filename is left versionless (extension code looks it up by a stable name).
+AST_JAR=$(ls ast-engine/target/blast-radius-ast*.jar 2>/dev/null | grep -v '/original-' | head -n1)
+if [ -z "$AST_JAR" ]; then
+    echo "ERROR: AST engine JAR not found under ast-engine/target/ — run scripts/build-ast-engine.sh first"
+    exit 1
+fi
+cp "$AST_JAR" extension/lib/ast-engine/blast-radius-ast.jar
+echo "Copied $AST_JAR -> extension/lib/ast-engine/blast-radius-ast.jar"
 
 echo "==> tsc (extension)"
 cd extension && npm run build && cd ..

@@ -2,9 +2,11 @@ import * as vscode from "vscode";
 
 import { runPipeline } from "./orchestrator/pipeline.js";
 import { logger } from "./utils/logger.js";
+import { setExtensionContext } from "./utils/extensionPaths.js";
 
 export function activate(context: vscode.ExtensionContext) {
   try {
+    setExtensionContext(context);
     logger.info("Blast Radius extension activated");
 
     const disposable = vscode.commands.registerCommand(
