@@ -3,10 +3,27 @@
 ## Prerequisites
 
 - Node.js 20+ installed
-- Access to IBM Bob API (endpoint and API key)
+- **IBM Bob Shell installed locally** (see installation below)
 - Git repository cloned
 
-## Installation
+## Bob Shell Installation
+
+**Required:** Bob Shell must be installed on your system before using the AI Orchestrator.
+
+```bash
+# Install Bob Shell (one-time setup)
+curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash
+
+# Accept license
+bob --accept-license
+
+# Verify installation
+bob --version
+```
+
+**Authentication:** Bob Shell handles authentication via local IBM SSO - no API keys needed!
+
+## AI Orchestrator Installation
 
 ```bash
 # Navigate to the ai-orchestrator directory
@@ -21,15 +38,9 @@ npm run build
 
 ## Configuration
 
-### Set Environment Variables
+### Optional Environment Variables
 
 ```bash
-# Required: IBM Bob API endpoint
-export BOB_ENDPOINT="https://bob.ibm.com/v1"
-
-# Required: IBM Bob API key
-export BOB_API_KEY="your-api-key-here"
-
 # Optional: Model selection (default: granite-13b-chat)
 export BOB_MODEL="granite-13b-chat"
 
@@ -40,11 +51,11 @@ export BOB_TIMEOUT="60000"
 Or create a `.env` file in the ai-orchestrator directory:
 
 ```bash
-BOB_ENDPOINT=https://bob.ibm.com/v1
-BOB_API_KEY=your-api-key-here
 BOB_MODEL=granite-13b-chat
 BOB_TIMEOUT=60000
 ```
+
+**Note:** `BOB_ENDPOINT` and `BOB_API_KEY` are no longer required. Bob Shell handles authentication locally.
 
 ## Usage Examples
 
@@ -171,8 +182,6 @@ const { analyze } = require('./dist/src/index.js');
 const contractA = { /* ... */ };
 
 analyze(contractA, {
-  endpoint: 'https://custom-bob.example.com',
-  apiKey: 'custom-key',
   model: 'granite-34b-chat',
   maxRetries: 5,
   onRetry: (attempt, error) => {
@@ -186,6 +195,8 @@ analyze(contractA, {
     console.error('Failed:', error.message);
   });
 ```
+
+**Note:** `endpoint` and `apiKey` options are deprecated. Bob Shell handles authentication locally.
 
 ## Integration with Extension
 
@@ -265,18 +276,18 @@ console.log('Dependencies preserved:', truncated.dependencies.length);
 
 ## Troubleshooting
 
-### Error: "Bob endpoint is required"
+### Error: "IBM Bob Shell is not installed or not in PATH"
 
-**Solution:** Set the `BOB_ENDPOINT` environment variable:
+**Solution:** Install Bob Shell:
 ```bash
-export BOB_ENDPOINT="https://bob.ibm.com/v1"
+curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash
+bob --accept-license
+bob --version
 ```
 
-### Error: "Bob authentication failed"
-
-**Solution:** Check your API key:
+If installed but not in PATH, add Bob Shell to your PATH:
 ```bash
-export BOB_API_KEY="your-valid-api-key"
+export PATH="$PATH:$HOME/.bob/bin"
 ```
 
 ### Error: "Cannot find module"
@@ -293,12 +304,19 @@ npm run build
 export BOB_TIMEOUT="120000"  # 2 minutes
 ```
 
+Or pass it as an option:
+```javascript
+analyze(contractA, {
+  timeout: 120000
+})
+```
+
 ### Error: "Bob failed after 3 attempts"
 
 **Possible causes:**
-1. Bob service is down - Check service status
+1. Bob Shell process error - Check Bob Shell logs
 2. Invalid prompt format - Review prompt files
-3. Network issues - Check connectivity
+3. Process timeout - Increase BOB_TIMEOUT
 
 **Debug with retry callback:**
 ```javascript
@@ -307,6 +325,17 @@ analyze(contractA, {
     console.error(`Retry ${attempt}:`, error.message);
   }
 })
+```
+
+### Error: "No valid JSON object found in Bob response"
+
+**Possible causes:**
+1. Bob Shell returned non-JSON output
+2. Bob Shell error message mixed with output
+
+**Solution:** Check Bob Shell is working correctly:
+```bash
+echo "Hello" | bob
 ```
 
 ## Development Workflow

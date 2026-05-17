@@ -33,8 +33,8 @@ sequenceDiagram
     
     loop Max 3 attempts
         SH->>BC: call(request)
-        BC->>Bob: POST /chat/completions
-        Bob-->>BC: Raw JSON response
+        BC->>Bob: execSync('bob', {input: prompt})
+        Bob-->>BC: Raw JSON response (stdout)
         BC-->>SH: {content, usage}
         
         SH->>SH: JSON.parse(content)
@@ -88,7 +88,7 @@ graph TB
     end
     
     subgraph "External"
-        N[IBM Bob Shell CLI]
+        N[IBM Bob Shell CLI<br/>Local Installation]
         O[Extension Pipeline]
     end
     
@@ -179,12 +179,12 @@ stateDiagram-v2
 
 | Error Type | Retry? | User Action |
 |------------|--------|-------------|
-| Network timeout | No | Check connectivity |
-| 401 Unauthorized | No | Fix BOB_API_KEY |
-| 429 Rate limit | Yes (with backoff) | Wait or upgrade quota |
+| Bob Shell not installed | No | Install Bob Shell from bob.ibm.com/docs/shell |
+| Process timeout | No | Increase BOB_TIMEOUT |
+| Buffer overflow | No | Reduce Contract A size or increase maxBuffer |
 | JSON parse error | Yes (max 3) | Bob corrects format |
 | Zod validation error | Yes (max 3) | Bob corrects schema |
-| 500 Server error | No | Report to Bob team |
+| Shell execution error | No | Check Bob Shell logs and version |
 
 ## Configuration Management
 
@@ -197,21 +197,41 @@ Bob Shell must be installed locally on the user's machine before the extension c
 curl -fsSL https://bob.ibm.com/download/bobshell.sh | bash
 ```
 
-**Pre-flight Check (in extension):**
+**Pre-flight Check:**
+The BobClient automatically checks for Bob Shell installation:
 ```typescript
-try {
-  execSync('bob --version', { stdio: 'ignore' });
-  // Bob Shell is installed
-} catch (error) {
-  // Show error message with install link
-  vscode.window.showErrorMessage(
-    'IBM Bob Shell is not installed.',
-    'Install Bob Shell'
-  ).then(selection => {
-    if (selection === 'Install Bob Shell') {
-      vscode.env.openExternal(vscode.Uri.parse('https://bob.ibm.com/docs/shell'));
-    }
-  });
+private checkBobInstalled(): void {
+  try {
+    execSync('bob --version', { stdio: 'ignore' });
+  } catch (error) {
+    throw new Error(
+      'IBM Bob Shell is not installed or not in PATH. ' +
+      'Install it from: https://bob.ibm.com/docs/shell'
+    );
+  }
+}
+```
+
+**Extension Integration:**
+```typescript
+import { execSync } from 'child_process';
+import * as vscode from 'vscode';
+
+export function ensureBobShellInstalled(): boolean {
+  try {
+    execSync('bob --version', { stdio: 'ignore' });
+    return true;
+  } catch (error) {
+    vscode.window.showErrorMessage(
+      'IBM Bob Shell is required for Blast Radius analysis.',
+      'Install Bob Shell'
+    ).then(selection => {
+      if (selection === 'Install Bob Shell') {
+        vscode.env.openExternal(vscode.Uri.parse('https://bob.ibm.com/docs/shell'));
+      }
+    });
+    return false;
+  }
 }
 ```
 
@@ -221,11 +241,12 @@ try {
 # Bob Shell authentication is handled locally via IBM SSO
 # No API keys or endpoints needed
 
-# Optional
+# Optional configuration
 export BOB_MODEL="granite-13b-chat"  # or granite-34b-chat
-export BOB_TIMEOUT="60000"           # milliseconds
-export BOB_MAX_RETRIES="3"
+export BOB_TIMEOUT="60000"           # milliseconds (default: 60000)
 ```
+
+**Note:** `BOB_ENDPOINT`, `BOB_API_KEY`, and `BOB_MAX_RETRIES` are no longer used. Bob Shell handles authentication locally.
 
 ### Runtime Configuration
 
@@ -246,7 +267,7 @@ const contractB = await analyze(contractA, {
 
 | Scenario | Expected Time | Notes |
 |----------|---------------|-------|
-| **Success (no retry)** | 2-5s | Network + Bob inference |
+| **Success (no retry)** | 2-5s | Local process + Bob inference |
 | **1 retry** | 4-10s | Double the latency |
 | **2 retries** | 6-15s | Triple the latency |
 | **Max retries** | 8-20s | User sees loading state |
@@ -265,25 +286,31 @@ const contractB = await analyze(contractA, {
 ### Throughput
 
 - **Sequential**: 1 analysis per 2-5s
-- **Parallel** (future): Up to 10 concurrent requests (Bob API limit)
+- **Parallel** (future): Multiple concurrent Bob Shell processes
 - **Batch** (future): Process multiple files in single request
 
 ## Security Considerations
 
-### API Key Management
+### Local Authentication
+
+Bob Shell handles authentication locally via IBM SSO - no API keys needed in the code:
 
 ```typescript
-// ✅ Good: Read from environment
-const apiKey = process.env.BOB_API_KEY;
+// ✅ Good: No API keys required
+const client = new BobClient({
+  model: 'granite-13b-chat',
+  timeout: 60000
+});
 
-// ❌ Bad: Hardcoded in source
-const apiKey = "sk-abc123...";
-
-// ✅ Good: Validate before use
-if (!apiKey || apiKey.length < 20) {
-  throw new Error('Invalid BOB_API_KEY');
-}
+// ✅ Good: Authentication handled by Bob Shell
+// User authenticates once during Bob Shell installation
 ```
+
+**Benefits:**
+- No API keys to manage or rotate
+- No risk of key exposure in code or logs
+- Authentication handled by IBM SSO
+- Works offline after initial authentication
 
 ### Input Sanitization
 

@@ -128,15 +128,18 @@ export function buildPrompt(contractA: ContractA): PromptPair {
 - Robust JSON extraction (handles text before/after JSON)
 - Pre-flight installation check
 - Stderr suppression (prevents IDE warnings)
+- No API keys or endpoints required (local authentication via IBM SSO)
 
 **Implementation:**
 ```typescript
 import { execSync } from 'child_process';
 
 export interface BobConfig {
-  model?: string;
-  temperature?: number;
-  timeout?: number;
+  endpoint?: string;      // Deprecated: kept for compatibility
+  apiKey?: string;        // Deprecated: kept for compatibility
+  model?: string;        // e.g., granite-13b-chat
+  temperature?: number;  // 0.0 for deterministic output
+  timeout?: number;      // Process timeout in milliseconds
 }
 
 export interface BobRequest {
@@ -147,7 +150,7 @@ export interface BobRequest {
 }
 
 export interface BobResponse {
-  content: string;  // Clean JSON extracted from Bob output
+  content: string;  // Raw JSON string from Bob
   usage?: {
     promptTokens: number;
     completionTokens: number;
@@ -156,13 +159,13 @@ export interface BobResponse {
 }
 
 export class BobClient {
-  private config: Required<BobConfig>;
+  private config: Required<Omit<BobConfig, 'endpoint' | 'apiKey'>> & { timeout: number };
 
   constructor(config: BobConfig) {
     this.config = {
       model: 'granite-13b-chat',
       temperature: 0.0,
-      timeout: 60000,
+      timeout: 60000, // 60 seconds
       ...config
     };
   }
@@ -175,12 +178,12 @@ export class BobClient {
     const combinedPrompt = `${request.system}\n\n${request.user}`;
 
     // 3. Execute Bob Shell CLI with prompt via stdin
-    const bobOutput = execSync('bob', { 
+    const bobOutput = execSync('bob', {
       input: combinedPrompt,
       encoding: 'utf-8',
       timeout: this.config.timeout,
-      maxBuffer: 10 * 1024 * 1024,
-      stdio: ['pipe', 'pipe', 'ignore']  // Suppress stderr for IDE companion warnings
+      maxBuffer: 10 * 1024 * 1024,  // 10MB for large responses
+      stdio: ['pipe', 'pipe', 'ignore']  // Ignore stderr
     });
 
     // 4. Extract JSON from response (Bob may output text before/after)
@@ -188,25 +191,31 @@ export class BobClient {
     const firstBrace = response.indexOf('{');
     const lastBrace = response.lastIndexOf('}');
     
-    if (firstBrace === -1 || lastBrace === -1) {
-      throw new Error('No valid JSON found in Bob response');
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
+      throw new Error('No valid JSON object found in Bob response');
     }
     
-    // Use brace-counting to find matching closing brace
-    let braceCount = 0;
-    let endPos = firstBrace;
-    for (let i = firstBrace; i < response.length; i++) {
-      if (response[i] === '{') braceCount++;
-      if (response[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          endPos = i;
-          break;
+    // Extract JSON and validate it parses correctly
+    let jsonContent = response.substring(firstBrace, lastBrace + 1).trim();
+    
+    try {
+      JSON.parse(jsonContent);
+    } catch (parseError) {
+      // If parsing fails, use brace-counting for balanced extraction
+      let braceCount = 0;
+      let endPos = firstBrace;
+      for (let i = firstBrace; i < response.length; i++) {
+        if (response[i] === '{') braceCount++;
+        if (response[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            endPos = i;
+            break;
+          }
         }
       }
+      jsonContent = response.substring(firstBrace, endPos + 1).trim();
     }
-    
-    const jsonContent = response.substring(firstBrace, endPos + 1).trim();
 
     return {
       content: jsonContent,
@@ -219,8 +228,8 @@ export class BobClient {
       execSync('bob --version', { stdio: 'ignore' });
     } catch (error) {
       throw new Error(
-        'IBM Bob Shell is not installed. ' +
-        'Install from: https://bob.ibm.com/docs/shell'
+        'IBM Bob Shell is not installed or not in PATH. ' +
+        'Install it from: https://bob.ibm.com/docs/shell'
       );
     }
   }
@@ -228,13 +237,13 @@ export class BobClient {
 ```
 
 **Error Handling:**
-- Bob Shell not installed: Clear installation link
+- Bob Shell not installed: Clear installation link with PATH check
 - Shell injection prevention: Uses stdin instead of string interpolation
 - Timeout: Configurable, default 60s
-- JSON extraction: Handles text before/after JSON via brace-counting
-- stderr suppressed: Prevents IDE companion warnings from corrupting output
-- 500: Bob service error
-- Timeout: Configurable, default 60s
+- JSON extraction: Two-pass approach (simple + brace-counting fallback)
+- Stderr suppressed: Prevents IDE companion warnings from corrupting output
+- Buffer overflow: 10MB maxBuffer for large responses
+- User-friendly error messages for common issues
 
 ---
 
@@ -396,19 +405,23 @@ Please re-emit the entire ContractB JSON, fixing these validation issues.`;
 
 **Key Features:**
 - Single `analyze()` function export
-- Environment variable configuration
+- Environment variable configuration (optional)
 - Optional runtime overrides
 - Comprehensive error handling
+- No API keys or endpoints required
 
 **Implementation:**
 ```typescript
-import type { ContractA, ContractB } from '@blast-radius/shared';
+import type { ContractA } from '@blast-radius/shared';
 import { BobClient, BobConfig } from './bob/BobClient';
 import { buildPrompt } from './bob/promptBuilder';
-import { truncateContractA } from './retry/tokenManager';
+import { truncateContractA, calculateTokenLimits } from './retry/tokenManager';
 import { callWithRetry } from './retry/selfHealingLoop';
+import type { ContractB } from './schemas/contractB.zod';
 
 export interface AnalyzeOptions {
+  endpoint?: string;  // Deprecated: kept for compatibility
+  apiKey?: string;    // Deprecated: kept for compatibility
   model?: string;
   maxRetries?: number;
   onRetry?: (attempt: number, error: Error) => void;
@@ -420,45 +433,51 @@ export async function analyze(
 ): Promise<ContractB> {
   // Bob Shell authentication is handled locally - no API keys needed
   const config: BobConfig = {
+    endpoint: options.endpoint || process.env.BOB_ENDPOINT,  // Optional
+    apiKey: options.apiKey || process.env.BOB_API_KEY,      // Optional
     model: options.model || process.env.BOB_MODEL || 'granite-13b-chat',
-    temperature: 0.0,  // Always deterministic for JSON output
-    timeout: parseInt(process.env.BOB_TIMEOUT || '60000', 10)
+    temperature: 0.0  // Always deterministic for JSON output
   };
 
+  // Initialize Bob client (will check for Bob Shell installation)
   const client = new BobClient(config);
+
+  // Build prompts from markdown files
   const prompts = buildPrompt(contractA);
   
-  const truncated = truncateContractA(contractA, {
-    maxContextWindow: 8192,
-    systemPromptTokens: 1500,
-    reserveForResponse: 2048
-  });
+  // Calculate token limits based on actual system prompt size
+  const tokenLimits = calculateTokenLimits(prompts.system);
+  
+  // Truncate Contract A if needed to fit token budget
+  const truncatedContractA = truncateContractA(contractA, tokenLimits);
 
-  const finalPrompts = {
-    system: prompts.system,
-    user: JSON.stringify(truncated, null, 2)
-  };
+  // Rebuild user prompt with truncated data
+  const finalUserPrompt = JSON.stringify(truncatedContractA, null, 2);
 
+  // Call Bob with retry loop
   return await callWithRetry(
     client,
     {
-      system: finalPrompts.system,
-      user: finalPrompts.user,
-      model: config.model,
-      temperature: config.temperature
+      system: prompts.system,
+      user: finalUserPrompt,
+      model: config.model || 'granite-13b-chat',
+      temperature: config.temperature ?? 0.0
     },
     { maxRetries: options.maxRetries || 3, onRetry: options.onRetry }
   );
 }
 
-export type { ContractA, ContractB } from '@blast-radius/shared';
+export type { ContractA } from '@blast-radius/shared';
+export type { ContractB, Risk, EdgeType, Node, Edge } from './schemas/contractB.zod';
 export { contractBSchema } from './schemas/contractB.zod';
 ```
 
 **Configuration Priority:**
 1. Explicit options passed to `analyze()`
-2. Environment variables (BOB_MODEL, BOB_TIMEOUT only)
+2. Environment variables (BOB_MODEL, BOB_TIMEOUT - both optional)
 3. Defaults (granite-13b-chat, 60000ms timeout)
+
+**Note:** endpoint and apiKey parameters are deprecated but kept for backward compatibility. Bob Shell handles authentication locally via IBM SSO.
 
 ---
 
@@ -521,7 +540,7 @@ export const mockServer = app.listen(8080);
 
 ### Installation Requirement
 
-Bob Shell must be installed locally before use. Authentication is handled via local IBM SSO - no API keys needed.
+**Bob Shell must be installed locally before use.** Authentication is handled via local IBM SSO - no API keys or endpoints needed.
 
 ```bash
 # Install Bob Shell (one-time setup)
@@ -534,6 +553,9 @@ bob --accept-license
 bob --version
 ```
 
+**Pre-flight Check:**
+The BobClient automatically checks if Bob Shell is installed and provides clear error messages with installation instructions if not found.
+
 ### Optional Environment Variables
 
 ```bash
@@ -543,6 +565,8 @@ export BOB_MODEL="granite-13b-chat"
 # Request timeout in milliseconds (default: 60000)
 export BOB_TIMEOUT="60000"
 ```
+
+**Note:** `BOB_ENDPOINT` and `BOB_API_KEY` are no longer required. These were used in the HTTP API approach but are now deprecated. Bob Shell handles authentication locally.
 
 ### Usage Example
 
