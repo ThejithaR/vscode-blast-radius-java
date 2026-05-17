@@ -67,18 +67,9 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
       return fs.readJson(examplePath);
     }
 
-    // Check for API key
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.BOB_API_KEY;
-    if (!apiKey) {
-      logger.warn("No API key found, using example data");
-      const examplePath = path.join(__dirname, "..", "..", "examples", "contract-b.example.json");
-      return fs.readJson(examplePath);
-    }
-
     // Import and call ai-orchestrator's analyze method
     const aiOrchestrator = await import(aiOrchestratorPath);
     const output: ContractB = await aiOrchestrator.analyze(contractA, {
-      apiKey,
       maxRetries: 3
     });
 

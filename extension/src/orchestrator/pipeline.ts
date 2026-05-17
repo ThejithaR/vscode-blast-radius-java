@@ -121,9 +121,9 @@ export async function runPipeline(
     logger.info("=".repeat(60));
 
     // Open report in preview
-    const uri = vscode.Uri.file(reportPath);
+    //const uri = vscode.Uri.file(reportPath);
 
-    await vscode.commands.executeCommand("markdown.showPreview", uri);
+   // await vscode.commands.executeCommand("markdown.showPreview", uri);
     
     vscode.window.showInformationMessage(
       `Blast Radius analysis completed successfully in ${duration}s`

@@ -12,6 +12,10 @@ export default function App() {
     <>
       <Routes>
         <Route
+          path="/"
+          element={<MermaidVisualizerPage contractGraphData={contractData} />}
+        />
+        <Route
           path="/mermaid-visualizer"
           element={<MermaidVisualizerPage contractGraphData={contractData} />}
         />
