@@ -113,6 +113,7 @@ export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: str
     }
 
     logger.info(`AST analysis complete: ${output.dependencies.length} dependencies found`);
+    logger.info(`AST engine output:\n${JSON.stringify(output, null, 2)}`);
     return output;
 
   } catch (error: any) {
