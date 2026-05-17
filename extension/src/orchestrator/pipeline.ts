@@ -15,14 +15,17 @@ import { runAstEngine } from "../services/astEngineService.js";
 
 import { analyzeRisk } from "../services/aiService.js";
 
-import { generateMarkdown } from "../services/visualizerService.js";
+import { generateMarkdown, openVisualizer } from "../services/visualizerService.js";
 
 import { assembleContractA } from "./contractAssembler.js";
 
 /**
  * Main pipeline orchestrator
  */
-export async function runPipeline(targetFile: string): Promise<void> {
+export async function runPipeline(
+  targetFile: string,
+  context: vscode.ExtensionContext
+): Promise<void> {
   const startTime = Date.now();
 
   try {
@@ -99,9 +102,15 @@ export async function runPipeline(targetFile: string): Promise<void> {
       throw new Error("Failed to generate markdown report");
     }
 
-    const reportPath = "reports/blast-radius-report.md";
+    const reportPath = path.join(workspaceRoot, "blast-radius-report.md");
     await writeMarkdown(reportPath, markdown);
     logger.success(`Report generated: ${reportPath}`);
+
+    // Step 6: Open Visualizer
+    logger.info("");
+    logger.info("Step 6/6: Opening visualizer...");
+    await openVisualizer(contractB, context);
+    logger.success("Visualizer opened successfully");
 
     // Calculate execution time
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -112,8 +121,7 @@ export async function runPipeline(targetFile: string): Promise<void> {
     logger.info("=".repeat(60));
 
     // Open report in preview
-    const fullReportPath = path.join(workspaceRoot, reportPath);
-    const uri = vscode.Uri.file(fullReportPath);
+    const uri = vscode.Uri.file(reportPath);
 
     await vscode.commands.executeCommand("markdown.showPreview", uri);
     

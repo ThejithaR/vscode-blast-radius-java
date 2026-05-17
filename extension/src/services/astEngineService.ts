@@ -91,7 +91,7 @@ export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: str
     
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 50 * 1024 * 1024,  // 50MB for large output
-      timeout: 300000,  // 5 minutes
+      timeout: 12000,  // 5 minutes
       cwd: workspaceRoot
     });
 
