@@ -1,11 +1,7 @@
 import fs from "fs-extra";
 import path from "path";
-import { exec } from "child_process";
-import { promisify } from "util";
 import { logger } from "../utils/logger.js";
 import { getExtensionPath, getWorkspaceRoot } from "../utils/extensionPaths.js";
-
-const execAsync = promisify(exec);
 
 export interface ContractB {
   metadata: {
@@ -92,35 +88,11 @@ export async function analyzeRisk(contractA: any): Promise<ContractB> {
       return fs.readJson(examplePath);
     }
 
-    // Execute AI orchestrator
-    logger.info(`Executing AI orchestrator: ${aiOrchestratorPath}`);
-    const { stdout, stderr } = await execAsync(
-      `node "${aiOrchestratorPath}" "${inputPath}" "${outputPath}"`,
-      {
-        maxBuffer: 20 * 1024 * 1024, // 20MB
-        timeout: 300000, // 5 minutes for AI processing
-        cwd: workspaceRoot,
-        env: {
-          ...process.env,
-          ANTHROPIC_API_KEY: apiKey
-        }
-      }
-    );
-
-    if (stderr) {
-      logger.warn(`AI orchestrator stderr: ${stderr}`);
-    }
-
-    if (stdout) {
-      logger.info(`AI orchestrator stdout: ${stdout}`);
-    }
-
-    // Read output
-    if (!await fs.pathExists(outputPath)) {
-      throw new Error(`AI orchestrator did not produce output file: ${outputPath}`);
-    }
-
-    const output: ContractB = await fs.readJson(outputPath);
+    // Import and call ai-orchestrator's analyze method
+    const aiOrchestrator = await import(aiOrchestratorPath);
+    const output: ContractB = await aiOrchestrator.analyze(contractA, {
+      maxRetries: 3
+    });
 
     // Validate output structure
     if (!output.nodes || !Array.isArray(output.nodes)) {

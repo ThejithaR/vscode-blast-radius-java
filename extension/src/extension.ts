@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
           const filePath = editor.document.uri.fsPath;
           logger.info(`Starting analysis for: ${filePath}`);
 
-          await runPipeline(filePath);
+          await runPipeline(filePath, context);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error(`Command execution failed: ${errorMessage}`, error);

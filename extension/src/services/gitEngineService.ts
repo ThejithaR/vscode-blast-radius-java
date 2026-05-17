@@ -54,6 +54,7 @@ export async function getGitDelta(targetFile: string, workspaceRoot: string): Pr
     }
 
     logger.info(`Git delta extracted: ${output.changedMethods?.length || 0} changed methods`);
+    logger.info(`output: ${output}`)
     return output;
 
   } catch (error) {

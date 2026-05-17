@@ -1,57 +1,101 @@
 {
-  "targetFile": "src/main/java/com/example/core/security/ValidationUtils.java",
-  "targetPackage": "com.example.core.security",
-  "overallRiskScore": "CRITICAL",
-  "summary": "The addition of a mandatory 'strictMode' boolean parameter to verifyTokenStructure() creates breaking compile-time errors in 2 downstream files. Urgent refactoring required.",
+  "metadata": {
+    "timestamp": "2024-01-15T10:30:00.000Z",
+    "targetFile": "src/main/java/com/example/core/security/ValidationUtils.java",
+    "analysisVersion": "1.0.0"
+  },
   "nodes": [
     {
       "id": "node_target",
-      "filePath": "src/main/java/com/example/core/security/ValidationUtils.java",
-      "packageName": "com.example.core.security",
-      "label": "ValidationUtils.java (Modified)",
-      "risk": "TARGET",
-      "reason": "Origin of the breaking signature change."
+      "label": "ValidationUtils.verifyTokenStructure()",
+      "type": "method",
+      "file": "src/main/java/com/example/core/security/ValidationUtils.java",
+      "line": 45,
+      "riskLevel": "critical",
+      "riskScore": 95,
+      "reasons": [
+        "Origin of the breaking signature change",
+        "Added mandatory 'strictMode' parameter causing compile-time breaks"
+      ]
     },
     {
       "id": "node_filter",
-      "filePath": "src/main/java/com/example/api/middleware/JwtAuthFilter.java",
-      "packageName": "com.example.api.middleware",
-      "label": "JwtAuthFilter.java",
-      "risk": "CRITICAL",
-      "reason": "COMPILE BREAK: The method call verifyTokenStructure(rawToken) is missing the new mandatory 'strictMode' parameter. This will completely halt compilation."
+      "label": "JwtAuthFilter.doFilter()",
+      "type": "method",
+      "file": "src/main/java/com/example/api/middleware/JwtAuthFilter.java",
+      "line": 78,
+      "riskLevel": "critical",
+      "riskScore": 90,
+      "reasons": [
+        "COMPILE BREAK: Missing the new mandatory 'strictMode' parameter",
+        "Authentication filter - critical security component",
+        "Will completely halt compilation"
+      ]
     },
     {
       "id": "node_billing",
-      "filePath": "src/main/java/com/example/api/controllers/InternalBillingController.java",
-      "packageName": "com.example.api.controllers",
-      "label": "InternalBillingController.java",
-      "risk": "CRITICAL",
-      "reason": "COMPILE BREAK: Missing the new mandatory 'strictMode' parameter. If this component fails to compile, billing pipeline routes will drop."
+      "label": "InternalBillingController.processPayment()",
+      "type": "method",
+      "file": "src/main/java/com/example/api/controllers/InternalBillingController.java",
+      "line": 123,
+      "riskLevel": "critical",
+      "riskScore": 85,
+      "reasons": [
+        "COMPILE BREAK: Missing the new mandatory 'strictMode' parameter",
+        "Billing pipeline component - business critical",
+        "Payment processing will fail if compilation breaks"
+      ]
     },
     {
       "id": "node_logger",
-      "filePath": "src/main/java/com/example/analytics/logging/AuditLogger.java",
-      "packageName": "com.example.analytics.logging",
-      "label": "AuditLogger.java",
-      "risk": "LOW_RISK",
-      "reason": "LOGICAL RUNTIME WARN: While compile-breaking parameters apply here too, this is an analytics sink. Less runtime business threat than billing or auth failures."
+      "label": "AuditLogger.logSecurityEvent()",
+      "type": "method",
+      "file": "src/main/java/com/example/analytics/logging/AuditLogger.java",
+      "line": 56,
+      "riskLevel": "low",
+      "riskScore": 30,
+      "reasons": [
+        "LOGICAL RUNTIME WARN: Compile-breaking parameter applies here too",
+        "Analytics sink - less critical than auth or billing",
+        "Can be fixed after critical components"
+      ]
     }
   ],
   "edges": [
     {
-      "from": "node_target",
-      "to": "node_filter",
-      "type": "breaking-dependency"
+      "source": "node_target",
+      "target": "node_filter",
+      "type": "direct",
+      "label": "calls"
     },
     {
-      "from": "node_target",
-      "to": "node_billing",
-      "type": "breaking-dependency"
+      "source": "node_target",
+      "target": "node_billing",
+      "type": "direct",
+      "label": "calls"
     },
     {
-      "from": "node_target",
-      "to": "node_logger",
-      "type": "warning-dependency"
+      "source": "node_target",
+      "target": "node_logger",
+      "type": "cascading",
+      "label": "calls"
     }
-  ]
+  ],
+  "summary": {
+    "totalNodes": 4,
+    "totalEdges": 3,
+    "riskDistribution": {
+      "critical": 3,
+      "high": 0,
+      "medium": 0,
+      "low": 1
+    },
+    "overallRisk": "critical",
+    "keyFindings": [
+      "Breaking signature change affects 3 downstream components",
+      "2 critical components (JwtAuthFilter, InternalBillingController) will fail to compile",
+      "Authentication and billing pipelines are at risk",
+      "Immediate refactoring required to add 'strictMode' parameter to all call sites"
+    ]
+  }
 }

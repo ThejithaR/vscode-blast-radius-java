@@ -36,7 +36,7 @@ export interface GitDeltaOutput {
 /**
  * Run AST engine to analyze dependencies
  */
-export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDependenciesOutput> {
+export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: string): Promise<AstDependenciesOutput> {
   try {
     logger.info("Running AST engine");
 
@@ -60,6 +60,9 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
       "ast-engine",
       "blast-radius-ast.jar"
     );
+
+    logger.info(`Looking for AST engine JAR at: ${astEngineJar}`);
+    logger.info(`__dirname is: ${__dirname}`);
 
     // Check if AST engine JAR exists
     if (!await fs.pathExists(astEngineJar)) {
@@ -89,7 +92,7 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 50 * 1024 * 1024,  // 50MB for large output
-      timeout: 300000,  // 5 minutes
+      timeout: 12000,  // 5 minutes
       cwd: workspaceRoot
     });
 
