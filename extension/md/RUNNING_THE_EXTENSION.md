@@ -18,7 +18,10 @@ npm install
 # Build git-engine
 npm run build --workspace=git-engine
 
-# Build AST engine (Java)
+# Build AST engine (Java) - use build script
+bash scripts/build-ast-engine.sh
+
+# Or manually:
 cd ast-engine
 mvn clean package
 cd ..
@@ -113,8 +116,11 @@ Then in VSCode:
 
 ### AST Engine Fails
 - Ensure Java is installed: `java -version`
-- Ensure Maven built the JAR: `ls ast-engine/target/*.jar`
+- Ensure Maven built the JAR: `ls ast-engine/target/blast-radius-ast-0.0.1.jar`
+- Check JAR name is versioned: `blast-radius-ast-0.0.1.jar`
+- Run build script: `bash scripts/build-ast-engine.sh`
 - Falls back to example data if JAR not found
+- Check VS Code Output panel for detailed error messages
 
 ### AI Analysis Returns Empty
 - Check if API key is set: `echo $ANTHROPIC_API_KEY`
