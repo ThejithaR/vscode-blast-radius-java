@@ -35,7 +35,7 @@ export interface GitDeltaOutput {
 /**
  * Run AST engine to analyze dependencies
  */
-export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDependenciesOutput> {
+export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: string): Promise<AstDependenciesOutput> {
   try {
     logger.info("Running AST engine");
 
@@ -46,18 +46,24 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     if (!gitOutput.targetPackage) {
       throw new Error("Invalid git output: missing targetPackage");
     }
-
-    const workspaceRoot = process.cwd();
+    // __dirname = extension/dist/services
     const astEngineJar = path.join(
-      workspaceRoot,
+      __dirname,
+      "..",
+      "..",
+      "..",
       "ast-engine",
       "target",
       "blast-radius-ast-0.0.1.jar"
     );
 
+    logger.info(`Looking for AST engine JAR at: ${astEngineJar}`);
+    logger.info(`__dirname is: ${__dirname}`);
+
     // Check if AST engine JAR exists
     if (!await fs.pathExists(astEngineJar)) {
-      logger.warn("AST engine JAR not found, using example data");
+      logger.warn(`⚠ AST engine JAR not found at: ${astEngineJar}`);
+      logger.warn("Using example data instead");
       // When compiled, __dirname is extension/dist/services
       // Go up to extension root, then to examples directory
       const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
@@ -85,7 +91,7 @@ export async function runAstEngine(gitOutput: GitDeltaOutput): Promise<AstDepend
     
     const { stdout, stderr } = await execAsync(command, {
       maxBuffer: 50 * 1024 * 1024,  // 50MB for large output
-      timeout: 300000,  // 5 minutes
+      timeout: 12000,  // 5 minutes
       cwd: workspaceRoot
     });
 

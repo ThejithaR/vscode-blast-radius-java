@@ -1,3 +1,5 @@
+import * as vscode from "vscode";
+import * as path from "path";
 import { logger } from "../utils/logger.js";
 
 export interface ContractB {
@@ -60,7 +62,7 @@ export async function generateMarkdown(contractB: ContractB): Promise<string> {
     md += `## 📊 Summary\n\n`;
     md += `- **Total Nodes**: ${contractB.summary.totalNodes}\n`;
     md += `- **Total Edges**: ${contractB.summary.totalEdges}\n`;
-    md += `- **Overall Risk**: ${getRiskEmoji(contractB.summary.overallRisk)} **${contractB.summary.overallRisk.toUpperCase()}**\n\n`;
+    md += `- **Overall Risk**: ${getRiskEmoji(contractB.summary.overallRisk)} **${(contractB.summary.overallRisk || 'UNKNOWN').toUpperCase()}**\n\n`;
 
     // Risk distribution with visual indicators
     md += `## 🎨 Risk Distribution\n\n`;
@@ -146,7 +148,8 @@ export async function generateMarkdown(contractB: ContractB): Promise<string> {
   }
 }
 
-function getRiskEmoji(risk: string): string {
+function getRiskEmoji(risk: string | undefined): string {
+  if (!risk) return '⚪';
   const riskLower = risk.toLowerCase();
   if (riskLower.includes('critical')) return '🔴';
   if (riskLower.includes('high')) return '🟠';
@@ -155,7 +158,8 @@ function getRiskEmoji(risk: string): string {
   return '⚪';
 }
 
-function getRiskStyle(risk: string): string {
+function getRiskStyle(risk: string | undefined): string {
+  if (!risk) return 'low';
   const riskLower = risk.toLowerCase();
   if (riskLower.includes('critical')) return 'critical';
   if (riskLower.includes('high')) return 'high';
@@ -177,9 +181,15 @@ function groupNodesByRisk(nodes: any[]): Record<string, any[]> {
   };
 
   nodes.forEach(node => {
+    if (!node.riskLevel) {
+      grouped.low.push(node);
+      return;
+    }
     const risk = node.riskLevel.toLowerCase();
     if (grouped[risk]) {
       grouped[risk].push(node);
+    } else {
+      grouped.low.push(node);
     }
   });
 
@@ -187,3 +197,130 @@ function groupNodesByRisk(nodes: any[]): Record<string, any[]> {
 }
 
 // Made with Bob
+
+
+/**
+ * Open visualizer webview and send Contract B data
+ */
+export async function openVisualizer(
+  contractB: ContractB,
+  context: vscode.ExtensionContext
+): Promise<void> {
+  try {
+    logger.info("Opening visualizer webview");
+
+    // Create webview panel
+    const panel = vscode.window.createWebviewPanel(
+      "blastRadiusVisualizer",
+      "Blast Radius Visualizer",
+      vscode.ViewColumn.One,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [
+          vscode.Uri.file(path.join(context.extensionPath, "dist", "webview"))
+        ]
+      }
+    );
+
+    // Get path to visualizer dist folder (built by build-visualizer.sh)
+    const visualizerPath = path.join(context.extensionPath, "dist", "webview");
+    const indexPath = path.join(visualizerPath, "index.html");
+
+    // Read the HTML file
+    const fs = await import("fs");
+    let html = fs.readFileSync(indexPath, "utf8");
+
+    // Convert local paths to webview URIs
+    const scriptUri = panel.webview.asWebviewUri(
+      vscode.Uri.file(path.join(visualizerPath, "assets"))
+    );
+
+    // Replace asset paths in HTML
+    html = html.replace(
+      /\/assets\//g,
+      `${scriptUri.toString()}/`
+    );
+
+    // Set HTML content
+    panel.webview.html = html;
+
+    // Wait for webview to be ready, then send Contract B
+    panel.webview.onDidReceiveMessage(
+      (message) => {
+        if (message.type === "WEBVIEW_READY") {
+          // Transform Contract B to match visualizer's expected format
+          const contractGraphData = transformContractBToGraphData(contractB);
+          
+          panel.webview.postMessage({
+            type: "CONTRACT_B",
+            payload: contractGraphData
+          });
+          
+          logger.success("Contract B sent to visualizer");
+        }
+      },
+      undefined,
+      context.subscriptions
+    );
+
+    logger.success("Visualizer webview opened");
+
+  } catch (error) {
+    logger.error("Failed to open visualizer", error);
+    throw new Error(`Visualizer failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * Transform Contract B format to ContractGraphData format expected by visualizer
+ */
+function transformContractBToGraphData(contractB: ContractB): any {
+  // Map risk levels from Contract B to visualizer format
+  const riskLevelMap: Record<string, string> = {
+    critical: "CRITICAL",
+    high: "HIGH_RISK",
+    medium: "LOW_RISK",
+    low: "SAFE"
+  };
+
+  // // Find target node (first node or one with highest risk)
+  // const targetNode = contractB.nodes[0];
+
+  return {
+    targetFile: contractB.metadata.targetFile,
+    targetPackage: extractPackageName(contractB.metadata.targetFile),
+    overallRiskScore: riskLevelMap[(contractB.summary.overallRisk || 'high').toLowerCase()] || "HIGH_RISK",
+    summary: contractB.summary.keyFindings.join(" "),
+    nodes: contractB.nodes.map((node, index) => ({
+      id: node.id,
+      filePath: node.file,
+      packageName: extractPackageName(node.file),
+      label: node.label,
+      risk: index === 0 ? "TARGET" : (riskLevelMap[node.riskLevel] || "LOW_RISK"),
+      reason: node.reasons.join(" ")
+    })),
+    edges: contractB.edges.map(edge => ({
+      from: edge.source,
+      to: edge.target,
+      type: edge.type === "direct" ? "direct-dependency" : 
+            edge.type === "cascading" ? "cascading-dependency" : 
+            "passive-dependency"
+    }))
+  };
+}
+
+/**
+ * Extract package name from file path
+ */
+function extractPackageName(filePath: string): string {
+  // Extract package from Java file path
+  const match = filePath.match(/src\/main\/java\/(.+)\//);
+  if (match) {
+    return match[1].replace(/\//g, ".");
+  }
+  
+  // Fallback: use directory name
+  const parts = filePath.split(/[/\\]/);
+  return parts.slice(-2, -1)[0] || "unknown";
+}
