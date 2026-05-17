@@ -1,6 +1,3 @@
-<!-- TODO(Member 4): Skill 3 — ReasonGeneration. -->
-<!-- Spec: ../../../visualizer/BOB-SKILLS-SPEC.md#skill-3 -->
-
 For each dependency, produce one short `reason` string. Prefix:
 
 - `COMPILE BREAK:` — for CRITICAL nodes with compile-time failure

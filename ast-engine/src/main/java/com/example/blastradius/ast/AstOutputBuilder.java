@@ -1,5 +1,18 @@
 package com.example.blastradius.ast;
 
-// TODO(Member 3): assemble AstDependenciesOutput (dependencies array). Jackson ObjectMapper → System.out.println(json). No severity, no risk — that's Bob's job.
+import com.example.blastradius.ast.model.AstDependenciesOutput;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+
+import java.io.IOException;
+
 public class AstOutputBuilder {
+    public static void printJson(AstDependenciesOutput out) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        mapper.writeValue(System.out, out);
+        System.out.println();
+    }
 }
+
+// Made with Bob
