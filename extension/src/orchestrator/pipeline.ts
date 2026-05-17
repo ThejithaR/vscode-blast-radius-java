@@ -81,7 +81,7 @@ export async function runPipeline(targetFile: string): Promise<void> {
     // Step 4: AI Analysis - Generate Contract B
     logger.info("");
     logger.info("Step 4/5: Running AI risk analysis...");
-    const contractB = await analyzeRisk(contractA, workspaceRoot);
+    const contractB = await analyzeRisk(contractA);
     
     if (!contractB || !contractB.nodes) {
       throw new Error("AI analysis failed to produce valid Contract B");

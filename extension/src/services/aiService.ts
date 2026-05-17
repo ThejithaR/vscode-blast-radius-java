@@ -41,7 +41,7 @@ export interface ContractB {
 /**
  * Analyze risk using AI orchestrator
  */
-export async function analyzeRisk(contractA: any, workspaceRoot: string): Promise<ContractB> {
+export async function analyzeRisk(contractA: any): Promise<ContractB> {
   try {
     logger.info("Running AI risk analysis");
 

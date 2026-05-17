@@ -46,20 +46,24 @@ export async function runAstEngine(gitOutput: GitDeltaOutput, workspaceRoot: str
     if (!gitOutput.targetPackage) {
       throw new Error("Invalid git output: missing targetPackage");
     }
-
-    // Use the workspace root passed from the caller
-    logger.info(`Using workspace root: ${workspaceRoot}`);
-
+    // __dirname = extension/dist/services
     const astEngineJar = path.join(
-      workspaceRoot,
+      __dirname,
+      "..",
+      "..",
+      "..",
       "ast-engine",
       "target",
       "blast-radius-ast-0.0.1.jar"
     );
 
+    logger.info(`Looking for AST engine JAR at: ${astEngineJar}`);
+    logger.info(`__dirname is: ${__dirname}`);
+
     // Check if AST engine JAR exists
     if (!await fs.pathExists(astEngineJar)) {
-      logger.warn("AST engine JAR not found, using example data");
+      logger.warn(`⚠ AST engine JAR not found at: ${astEngineJar}`);
+      logger.warn("Using example data instead");
       // When compiled, __dirname is extension/dist/services
       // Go up to extension root, then to examples directory
       const examplePath = path.join(__dirname, "..", "..", "examples", "ast-output.json");
