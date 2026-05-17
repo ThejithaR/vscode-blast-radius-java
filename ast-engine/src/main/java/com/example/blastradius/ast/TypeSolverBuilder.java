@@ -11,8 +11,10 @@ import java.nio.file.Path;
 import java.util.List;
 
 public class TypeSolverBuilder {
+    private CombinedTypeSolver combined;
+    
     public JavaSymbolSolver build(List<Path> srcRoots, List<Path> jars) {
-        CombinedTypeSolver combined = new CombinedTypeSolver();
+        combined = new CombinedTypeSolver();
         combined.add(new ReflectionTypeSolver());
         
         for (Path src : srcRoots) {
@@ -28,6 +30,10 @@ public class TypeSolverBuilder {
         }
         
         return new JavaSymbolSolver(combined);
+    }
+    
+    public CombinedTypeSolver getCombinedSolver() {
+        return combined;
     }
 }
 

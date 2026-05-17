@@ -13,9 +13,14 @@ import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.NameExpr;
 import com.github.javaparser.ast.expr.ObjectCreationExpr;
 import com.github.javaparser.resolution.UnsolvedSymbolException;
+import com.github.javaparser.resolution.declarations.ResolvedClassDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedInterfaceDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedMethodDeclaration;
+import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedTypeDeclaration;
 import com.github.javaparser.resolution.declarations.ResolvedValueDeclaration;
+import com.github.javaparser.resolution.types.ResolvedReferenceType;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.CombinedTypeSolver;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,10 +35,14 @@ public class DependencyFinder {
     private Map<String, FileHits> accumulator;
     private String currentPackageName;
     private Set<String> currentImports;
+    private CombinedTypeSolver typeSolver;
+    private Map<String, Boolean> implementationCache;
     
-    public List<Dependency> find(TargetSpec spec, List<Path> srcRoots) throws IOException {
+    public List<Dependency> find(TargetSpec spec, List<Path> srcRoots, CombinedTypeSolver solver) throws IOException {
         this.spec = spec;
         this.accumulator = new HashMap<>();
+        this.typeSolver = solver;
+        this.implementationCache = new HashMap<>();
         
         Path targetAbsPath = spec.workspaceRoot().resolve(spec.targetFile()).toAbsolutePath().normalize();
         
@@ -114,7 +123,9 @@ public class DependencyFinder {
                 String declaringFqn = r.declaringType().getQualifiedName();
                 String methodName = r.getName();
                 
-                if (declaringFqn.equals(spec.targetFqn()) 
+                // Direct match OR polymorphic match through interface/superclass
+                if ((declaringFqn.equals(spec.targetFqn())
+                        || isTargetImplementation(declaringFqn))
                         && spec.changedMethods().contains(methodName)) {
                     addCallSite(file, mce);
                 }
@@ -128,7 +139,7 @@ public class DependencyFinder {
             try {
                 String declaringFqn = oce.resolve().declaringType().getQualifiedName();
                 
-                if (declaringFqn.equals(spec.targetFqn()) 
+                if (declaringFqn.equals(spec.targetFqn())
                         && spec.changedMethods().contains(spec.simpleClassName())) {
                     addCallSite(file, oce);
                 }
@@ -145,7 +156,9 @@ public class DependencyFinder {
                 ResolvedMethodDeclaration r = mce.resolve();
                 String declaringFqn = r.declaringType().getQualifiedName();
                 
-                if (declaringFqn.equals(spec.targetFqn())) {
+                // Direct match OR polymorphic match
+                if (declaringFqn.equals(spec.targetFqn())
+                        || isTargetImplementation(declaringFqn)) {
                     addCallSite(file, mce);
                 }
             } catch (UnsolvedSymbolException | UnsupportedOperationException ignored) {
@@ -227,6 +240,83 @@ public class DependencyFinder {
         if (!dup) {
             hits.callSites.add(new CallSite(callerMethod, line, contextLine));
         }
+    }
+    
+    /**
+     * Check if the target class implements/extends the declaring type.
+     * Uses caching to avoid repeated type resolution.
+     */
+    private boolean isTargetImplementation(String declaringFqn) {
+        // Check cache first
+        if (implementationCache.containsKey(declaringFqn)) {
+            return implementationCache.get(declaringFqn);
+        }
+        
+        boolean result = checkTypeHierarchy(declaringFqn);
+        implementationCache.put(declaringFqn, result);
+        return result;
+    }
+    
+    /**
+     * Resolve both types and check if target is a subtype of declaring type.
+     */
+    private boolean checkTypeHierarchy(String declaringFqn) {
+        try {
+            // Resolve both types
+            ResolvedReferenceTypeDeclaration declaring = typeSolver.solveType(declaringFqn);
+            ResolvedReferenceTypeDeclaration target = typeSolver.solveType(spec.targetFqn());
+            
+            // Check if target is subtype of declaring
+            return isSubtypeOf(target, declaring);
+        } catch (Exception e) {
+            // Conservative: if can't resolve, assume no match
+            return false;
+        }
+    }
+    
+    /**
+     * Check if subtype implements/extends supertype.
+     * Checks direct match, all interfaces, and all ancestors.
+     */
+    private boolean isSubtypeOf(ResolvedReferenceTypeDeclaration subtype,
+                                ResolvedReferenceTypeDeclaration supertype) {
+        // Direct match
+        if (subtype.getQualifiedName().equals(supertype.getQualifiedName())) {
+            return true;
+        }
+        
+        // Check if subtype is a class
+        if (subtype.isClass()) {
+            ResolvedClassDeclaration classDecl = subtype.asClass();
+            
+            // Check all interfaces
+            for (ResolvedReferenceType iface : classDecl.getAllInterfaces()) {
+                if (iface.getQualifiedName().equals(supertype.getQualifiedName())) {
+                    return true;
+                }
+            }
+            
+            // Check all ancestors (superclasses)
+            for (ResolvedReferenceType ancestor : classDecl.getAllAncestors()) {
+                if (ancestor.getQualifiedName().equals(supertype.getQualifiedName())) {
+                    return true;
+                }
+            }
+        }
+        
+        // Check if subtype is an interface
+        if (subtype.isInterface()) {
+            ResolvedInterfaceDeclaration ifaceDecl = subtype.asInterface();
+            
+            // Check all extended interfaces
+            for (ResolvedReferenceType extended : ifaceDecl.getAllInterfacesExtended()) {
+                if (extended.getQualifiedName().equals(supertype.getQualifiedName())) {
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
     
     private static class FileHits {
