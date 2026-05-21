@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import type { ContractA } from '@blast-radius/shared';
 
@@ -32,6 +32,25 @@ const PROMPT_FILES = [
  */
 let cachedSystemPrompt: string | null = null;
 
+function resolvePromptDir(): string {
+  const candidates = [
+    join(__dirname, 'prompts'),
+    join(__dirname, '..', '..', 'src', 'bob', 'prompts'),
+    join(__dirname, '..', '..', '..', '..', 'src', 'bob', 'prompts'),
+    join(__dirname, '..', '..', '..', '..', '..', 'src', 'bob', 'prompts')
+  ];
+
+  const promptDir = candidates.find(dir =>
+    PROMPT_FILES.every(file => existsSync(join(dir, file)))
+  );
+
+  if (!promptDir) {
+    throw new Error(`AI orchestrator prompt files not found. Checked: ${candidates.join(', ')}`);
+  }
+
+  return promptDir;
+}
+
 /**
  * Build the complete prompt pair for IBM Bob.
  * 
@@ -41,9 +60,7 @@ let cachedSystemPrompt: string | null = null;
 export function buildPrompt(contractA: ContractA): PromptPair {
   // Build system prompt (cached after first call)
   if (!cachedSystemPrompt) {
-    // Resolve prompts directory relative to the compiled location
-    // When running from dist/ai-orchestrator/src/bob, go back to project root then to src
-    const promptDir = join(__dirname, '../../../..', 'src', 'bob', 'prompts');
+    const promptDir = resolvePromptDir();
     
     cachedSystemPrompt = PROMPT_FILES
       .map(file => {

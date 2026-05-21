@@ -106,6 +106,9 @@ export async function runPipeline(
     await writeMarkdown(reportPath, markdown);
     logger.success(`Report generated: ${reportPath}`);
 
+    logger.info("Contract B");
+    logger.info(JSON.stringify(contractB, null, 2));
+
     // Step 6: Open Visualizer
     logger.info("");
     logger.info("Step 6/6: Opening visualizer...");
